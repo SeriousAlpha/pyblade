@@ -2,11 +2,24 @@
 # coding=utf-8
 #
 #
-# FileName:  main.py
+#      main.py
 #
-# Description:
+#      Copyright (C) 2015 Yong Huang <huangyong@iscas.ac.cn>
 #
+#      This program is free software; you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation; either version 2 of the License, or
+#      (at your option) any later version.
 #
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#
+#      You should have received a copy of the GNU General Public License
+#      along with this program; if not, write to the Free Software
+#      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#      MA 02110-1301, USA.
 
 import dump_python
 import logging
@@ -17,6 +30,7 @@ import re
 import traceback
 import sys
 import subprocess
+import cfgGenerate
 from optparse import OptionParser
 from collections import OrderedDict
 
@@ -27,7 +41,7 @@ args_ori = set([])
 is_arg_in = False
 is_arg_return_op = False
 
-Checklist = ['os.system','os.popen','eval','open']
+Checklist = ['os.system','os.popen','eval','open','evec','popen','execfile']
 FILE_UNSAFE_FUNCS = set()
 FILE_SQL_UNSAFE_FUNCS = set()
 used_import_files = []
@@ -686,10 +700,11 @@ def judge_all(filename, check_type):
         traceback.print_exc()
 
 
-
-
 if __name__ == "__main__":
-
+    fn = "D:/githubsvn/taintcode/test/test3.py"
+    cfg = cfgGenerate.ControlFlowGraph()
+    s_ast = cfg.parse_file(fn)
+    cfgGenerate.PrintCFG(s_ast)
     main()
 
 
