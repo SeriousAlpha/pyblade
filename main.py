@@ -1,10 +1,10 @@
-#!env python
+# !env python
 # coding=utf-8
 #
 #
 #      main.py
 #
-#      Copyright (C) 2015 Yong Huang <huangyong@iscas.ac.cn>
+#      Copyright (C) 2015 revised by Yong Huang <huangyong@iscas.ac.cn>
 #
 #      This program is free software; you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -465,6 +465,7 @@ def look_up_arg(func, args_ori, args, func_name, import_func, verbose):
         ast_handlers = line.get('handlers')
         ast_test = line.get('test')
         ast_args = line.get('args')
+
         #处理单纯属性
         if line.get('type') == 'Assign':
             target_ids = []
@@ -528,7 +529,10 @@ def look_up_arg(func, args_ori, args, func_name, import_func, verbose):
             if (set(args_tmp)&args_ori) and func_ids and (set(func_ids)&(set(Checklist)|set(FILE_UNSAFE_FUNCS))):
                 is_arg_in = True
                 logger.info('type:call')
+
+
 #        if line.get('type') == 'Ififif':
+
         if line.get('type') == 'If':
             is_if_return = False
             is_if_param = False
