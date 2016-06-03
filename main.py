@@ -34,7 +34,8 @@ import cfgGenerate
 from optparse import OptionParser
 from collections import OrderedDict
 
-logger = color_log.init_log(logging.ERROR)
+logger = color_log.init_log(logging.DEBUG)
+# DEBUG INFO WARNING ERROR CRITICAL
 DEBUG = False
 
 args_ori = set([])
@@ -42,6 +43,7 @@ is_arg_in = False
 is_arg_return_op = False
 
 Checklist = ['os.system','os.popen','eval','open','evec','popen','execfile']
+Sensilist = ['sys.arg[1]','socket.read']
 FILE_UNSAFE_FUNCS = set()
 FILE_SQL_UNSAFE_FUNCS = set()
 used_import_files = []
@@ -57,7 +59,10 @@ class CheckFunc(object):
             self.tree = "{}"
             print e
         self.tree = json.loads(self.tree)
+        #print self.tree
         rec_decrease_tree(self.tree)
+        #print self.tree
+        #logger.debug("tree%r"%(self.tree))
         if DEBUG:
             try:
                 fd = open(filename+".json",'w')
@@ -67,7 +72,7 @@ class CheckFunc(object):
             except:
                 pass
         self.filename = self.tree.get("filename")
-        self.start = self.tree.get("start")
+        #logger.debug("filename::%r"%self.filename)
         self.body = self.tree.get("body")
         self.func = {}
         self.func_lines = {} #
@@ -218,8 +223,18 @@ class CheckFunc(object):
 
         for key, func in self.func.iteritems():
             self.parse_func(func, key.split(":")[1],False)
-        for key, func in self.func.iteritems():
-            self.parse_func(func, key.split(":")[1], False)
+
+    def record_taint_source(self):
+        source = self.tree.get('body')
+        for obj in source:
+            if obj.get("type") == "If":
+                value = obj.get('body')
+                for val in value:
+                    if val.get('type') == 'Assign':
+                        ops = val.get('value').get('right')
+                        if isinstance(ops, dict) and ops.get('value').get('attr') == 'argv':
+                            lineno = ops.get('value').get('lineno')
+                            print self.lines[lineno - 1]
 
     def record_all_func(self):
         from copy import deepcopy
@@ -235,13 +250,15 @@ class CheckFunc(object):
             logger.error("File:%s,line:%s,function:%s" %(self.filename, key, '--->'.join(value)))
 
         for key, value in self.record_unsafe_func.iteritems():
-            logger.error("maybe injected File:%s,line:%s,function:%s--->%r" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
+            logger.error("maybe injected File:%s,    line:%s,    function:%s--->%r" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
+
             print self.lines[key - 1]
             if 'request' in value.get('arg_leafs'):
                 logger.critical("maybe injected File:%s,line:%s,function:%s--->%r" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
 
         for key,value in self.record_other_unsafe_func.iteritems():
             logger.error("File:%s,line:%s,function:%s,dangerous_func:%r" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
+
             print self.lines[key - 1]
 
             #print "FILE_UNSAFE_FUNCS",FILE_UNSAFE_FUNCS
@@ -282,7 +299,7 @@ def find_arg_leafs(arg, leafs):
     if _type == "Attribute":
         parent, topids = {}, []
         rec_get_attr_top_id(arg, parent, topids)
-        logger.warn("parent:%r,topids:%r" %(parent, topids))
+        logger.warning("parent:%r,topids:%r" %(parent, topids))
         if topids and 'self' in topids[0].lower() :
             leafs.append(topids[0])
         elif topids and topids[0].lower() != 'request' and topids[0].lower() != 'self':
@@ -339,6 +356,9 @@ def find_arg_leafs(arg, leafs):
             find_arg_leafs(arg.get("left"), leafs)
 
     return
+
+
+
 
 def is_arg_return(func, args_ori):
     """
@@ -465,14 +485,24 @@ def look_up_arg(func, args_ori, args, func_name, import_func, verbose):
         ast_handlers = line.get('handlers')
         ast_test = line.get('test')
         ast_args = line.get('args')
-
         #处理单纯属性
         if line.get('type') == 'Assign':
             target_ids = []
             rec_get_targets(line.get('targets'), target_ids)
         else:
             target_ids = []
-
+            #处理字符串拼接过程
+        if line.get("type") == "Assign" and "value" in line and line.get("value").get("type")=="BinOp":
+#            right = line.get('value').get('right')
+#            if right.get('type') == 'Tuple':
+#                rec_find_args(right.get('elts'))
+            leafs = []
+            find_arg_leafs(line.get("value"), leafs)
+            logger.warning('----%r----%r' %(args_ori, leafs))
+            if (set(args_ori)&set(leafs)):
+                if target_ids:
+                    args_ori.update(target_ids)
+                    logger.warning("In Assign,BinOp add (%r) to (%r) where line=(%r) line=(%r)" %(target_ids,args_ori,line.get('lineno'), line))
         if line.get("type") == "Assign" and "value" in line and line.get("value").get("type")=="Name":
             if target_ids and line.get("value").get("id") in args_ori:
                 args_ori.update(target_ids)
@@ -499,93 +529,6 @@ def look_up_arg(func, args_ori, args, func_name, import_func, verbose):
                             logger.warn("In Assign,Attr delete (%r) from (%r) where line=(%r)***************************** line=(%r)" %(target_ids,args_ori,line.get('lineno'), line))
 
 
-        if line.get('type') == 'Return' and 'value' in line and line.get('value'):
-            value_id = line.get('value').get('id')
-            if value_id and value_id in args_ori :
-                print 'untrited_func_name',func_name
-                UNTREATED_FUNS.add(func_name)
-
-        if line.get('type') == 'For':
-            iter_args = []
-            find_arg_leafs(line.get('iter'), iter_args)
-            if set(iter_args)&set(args_ori):
-                targets = []
-                find_arg_leafs(line.get('target'), targets)
-                if targets:
-                    args_ori.update(targets)
-                    logger.info("In For Call add (%r) to (%r) where line=(%r) line=(%r)" %(target_ids,args_ori,line.get('lineno'), line))
-
-        if line.get("type") == "Expr" and "value" in line and line.get("value").get("type")=="Call":
-            value_arg_ids = []
-            rec_find_args(line.get('value'), value_arg_ids)
-            if set(value_arg_ids)&set(args_ori):
-                is_arg_in = True
-
-        if line.get('type') == 'Call': #处理if语句中中eval类似函数
-            func_ids = []
-            rec_get_func_ids(line.get('func'), func_ids)
-            args_tmp = []
-            rec_find_args(line, args_tmp)
-            if (set(args_tmp)&args_ori) and func_ids and (set(func_ids)&(set(Checklist)|set(FILE_UNSAFE_FUNCS))):
-                is_arg_in = True
-                logger.info('type:call')
-
-
-#        if line.get('type') == 'Ififif':
-
-        if line.get('type') == 'If':
-            is_if_return = False
-            is_if_param = False
-            is_in_param = False
-
-            if_judge_func = set(['exists','isfile','isdir','isabs','isdigit'])
-            for body in line.get('body'):
-                if body.get('type') == 'Return':
-                    is_if_return = True
-            test = line.get('test')
-            if test and test.get('type') == 'UnaryOp':
-                operand = test.get('operand')
-                args_tmp = []
-                if operand:
-                    rec_find_args(operand, args_tmp)
-                    if set(args_tmp)&set(args_ori):
-                        is_if_param = True
-                func_ids = []
-                rec_get_func_ids(operand, func_ids)
-                if set(func_ids)&if_judge_func and is_if_return and is_if_param:
-                    args_ori.difference_update(args_tmp)
-                    logger.warn("In If delete (%r) from (%r) where line=(%r)***************************** type=(%r)" %(args_tmp,args_ori,test.get('lineno'),test.get('type')))
-
-            if test and test.get('type') == 'Compare':
-                args_tmp = []
-                for key,value in test.iteritems():
-                    if key == 'left':
-                        if test[key].get('type') == 'Name':
-                            args_tmp = [test[key].get('id')]
-                    if key == 'comparators':
-                        for comparator in test[key]:
-                            if comparator.get('type') in ('List', 'Tuple'):
-                                for elt in comparator.get('elts'):
-                                    if elt.get('type') == 'Name' and elt.get('id') in args_ori:
-                                        is_in_param = True
-                if set(args_tmp)&set(args_ori) and is_if_return and not is_in_param:
-                    args_ori.difference_update(args_tmp)
-                    logger.warn("In If delete (%r) from (%r) where line=(%r)***************************** type=(%r)" %(args_tmp,args_ori,test.get('lineno'),test.get('type')))
-
-        if ast_body:
-            look_up_arg(ast_body, args_ori, args, func_name, import_func, verbose)
-        if ast_orelse:
-            look_up_arg(ast_orelse, args_ori, args, func_name, import_func, verbose)
-        if ast_handlers:
-            look_up_arg(ast_handlers, args_ori, args, func_name, import_func, verbose)
-        if ast_test and ast_test.get('comparators'):
-            look_up_arg(ast_test.get('comparators'),args_ori, args, func_name, import_func, verbose)
-        if ast_test and ast_test.get('left'):
-            look_up_arg(ast_test.get('left'),args_ori, args, func_name, import_func, verbose)
-        if ast_args :
-            look_up_arg(ast_args, args_ori, args, func_name, import_func, verbose)
-
-    return
 
 def get_func_id(func, func_ids):
     """获取被调用函数的名称"""
@@ -682,7 +625,7 @@ def main():
             print "您输入的文件或者路径不存在"
             sys.exit()
     for filename in files:
-        print "filename",filename
+        #print "filename",filename
         try:
             judge_all(filename, check_type)
         except Exception, e:
@@ -700,15 +643,17 @@ def judge_all(filename, check_type):
                 judge_all(import_file, check_type)
         judge.parse_py()
         judge.record_all_func()
+        judge.record_taint_source()
     except:
         traceback.print_exc()
 
 
 if __name__ == "__main__":
-    fn = "D:/githubsvn/taintcode/test/test3.py"
-    cfg = cfgGenerate.ControlFlowGraph()
-    s_ast = cfg.parse_file(fn)
-    cfgGenerate.PrintCFG(s_ast)
+    fn = "D:/githubsvn/gitlabpyblade/pyblade/test1/taintanalysis.py"
+    #fn = "D:/githubsvn/gitlabpyblade/pyblade/test/test3.py"
+    #cfg = cfgGenerate.ControlFlowGraph()
+    #s_ast = cfg.parse_file(fn)
+    #cfgGenerate.PrintCFG(s_ast)
     main()
 
 
