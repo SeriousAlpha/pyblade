@@ -22,7 +22,7 @@
 #      MA 02110-1301, USA.
 import ast
 
-from astbasetraverser import AstBaseTraverser
+from ast_base_traverser import  AstBaseTraverser
 
 
 class AstFullTraverser(AstBaseTraverser):

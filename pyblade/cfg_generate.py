@@ -27,7 +27,7 @@ Creates a control flow graph (cfg)
 import ast
 from pprint import pprint
 
-from traversers.astfulltraverser import AstFullTraverser
+from traversers.ast_full_traverser import AstFullTraverser
 
 
 class Block():

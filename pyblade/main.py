@@ -30,7 +30,7 @@ import re
 import traceback
 import sys
 import subprocess
-import cfgGenerate
+#import cfg_generate
 from optparse import OptionParser
 from collections import OrderedDict
 
@@ -42,7 +42,7 @@ args_ori = set([])
 is_arg_in = False
 is_arg_return_op = False
 
-Checklist = ['os.system','os.popen','eval','open','evec','popen','execfile']
+Checklist = ['os.system','os.popen','eval','open','evec','popen','execfile','os.spawnl','os.spawnlp','os.spawnlpe','os.spawnle']
 Sensilist = ['sys.arg[1]','socket.read']
 FILE_UNSAFE_FUNCS = set()
 FILE_SQL_UNSAFE_FUNCS = set()
@@ -51,7 +51,7 @@ import_func_all = {}
 CMD_COUNT = 0
 
 class CheckFunc(object):
-    """根据语法树自动判断注入攻击"""
+    """judge the injection base on ast"""
     def __init__(self, filename, check_type):
         try:
             self.tree = dump_python.parse_json(filename)
@@ -59,10 +59,8 @@ class CheckFunc(object):
             self.tree = "{}"
             print e
         self.tree = json.loads(self.tree)
-        #print self.tree
         rec_decrease_tree(self.tree)
-        #print self.tree
-        #logger.debug("tree%r"%(self.tree))
+        logger.debug("tree\n%r\n"%(self.tree))
         if DEBUG:
             try:
                 fd = open(filename+".json",'w')
@@ -86,7 +84,7 @@ class CheckFunc(object):
         self.import_module = {}
         self.record_param = {}
         self.import_func = {}
-        self.arg = {} #主要用于获取类的参数
+        self.arg = {}
         logger.debug("filename:%s"%(self.filename))
         
     def get_func_objects(self, body, class_name=None):
@@ -104,7 +102,7 @@ class CheckFunc(object):
         return
 
     def get_func_lines(self, func, func_name):
-        """ 获取函数的执行的行，找到func"""
+        """ get the line of the function"""
         #if "body" in func
         if isinstance(func, dict) and 'body' in func:
             lines = func.get('body')
@@ -126,7 +124,7 @@ class CheckFunc(object):
                 self.func_lines[func_name].append(line)
                 continue
             elif line.get('type') == 'Call':
-                self.func_lines[func_name].append(line)
+                self.self.func_lines[func_name].append(line)
                 continue
 
             if ast_body:
@@ -225,16 +223,40 @@ class CheckFunc(object):
             self.parse_func(func, key.split(":")[1],False)
 
     def record_taint_source(self):
+        valset = []
+        #print list(self.record_unsafe_func.iteritems())
+        for key, value in self.record_unsafe_func.iteritems():
+            logger.error("maybe injected File:%s,    line:%s,    function:%s--->%r" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
         source = self.tree.get('body')
         for obj in source:
             if obj.get("type") == "If":
                 value = obj.get('body')
                 for val in value:
                     if val.get('type') == 'Assign':
+                        target = val.get('targets')
+                        for ids in target:
+                            valset = ids.get('id')
+                        ops = val.get('value').get('left')
+                        try: # try the opsleft and right
+                            if isinstance(ops, dict) and ops.get('value').get('attr') == 'argv' and ops.get('value').get('value').get('id') == 'sys' :
+                                lineno = ops.get('value').get('lineno')
+                                print self.lines[lineno - 1]
+                        except Exception,e:
+                            print e
                         ops = val.get('value').get('right')
-                        if isinstance(ops, dict) and ops.get('value').get('attr') == 'argv':
-                            lineno = ops.get('value').get('lineno')
-                            print self.lines[lineno - 1]
+                        try:
+                            if isinstance(ops, dict) and ops.get('value').get('attr') == 'argv' and ops.get('value').get('value').get('id') == 'sys' :
+                                lineno = ops.get('value').get('lineno')
+                                print self.lines[lineno - 1]
+                        except Exception,e:
+                            print e
+
+
+
+#    def judge_if_main(self):
+#        '''判断文件里是否含有main'''
+
+
 
     def record_all_func(self):
         from copy import deepcopy
@@ -602,7 +624,7 @@ def print_func(filename, lineno):
 
 def usage():
     print """用途：本程序主要用于测试py代码中命令注入\n用法：python main.py -d path
-        path即为需要测试的目录"""
+        path即为需要测试的目录路径"""
 
 def main():
     parser = OptionParser()
