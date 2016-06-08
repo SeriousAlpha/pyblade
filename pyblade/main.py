@@ -4,7 +4,8 @@
 #
 #      main.py
 #
-#      Copyright (C) 2015 revised by Yong Huang <huangyong@iscas.ac.cn>
+#      Copyright (C) 2014 - 2015 https://github.com/shengqi158/pyvulhunter is origin
+#                   2015 - 2016 revised by Yong Huang <huangyong@iscas.ac.cn>
 #
 #      This program is free software; you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -223,6 +224,7 @@ class CheckFunc(object):
             self.parse_func(func, key.split(":")[1],False)
 
     def record_taint_source(self):
+        ''' tiant source marked '''
         valset = []
         #print list(self.record_unsafe_func.iteritems())
         for key, value in self.record_unsafe_func.iteritems():
@@ -242,16 +244,14 @@ class CheckFunc(object):
                                 lineno = ops.get('value').get('lineno')
                                 print self.lines[lineno - 1]
                         except Exception,e:
-                            print e
+                            pass
                         ops = val.get('value').get('right')
                         try:
                             if isinstance(ops, dict) and ops.get('value').get('attr') == 'argv' and ops.get('value').get('value').get('id') == 'sys' :
                                 lineno = ops.get('value').get('lineno')
                                 print self.lines[lineno - 1]
                         except Exception,e:
-                            print e
-
-
+                            pass
 
 #    def judge_if_main(self):
 #        '''判断文件里是否含有main'''
