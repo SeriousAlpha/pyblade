@@ -1,13 +1,24 @@
 #!env python
-#coding = utf-8
+# coding = utf-8
+
 import sys
 import os
 
-def cat_file(filename):
+def list_file(filename):
     cmd = "cat " + filename
     print cmd
 
-    os.system(cmd)
+    def demo(filename):
+        cmd = "cat "  + filename
+        print cmd
+        os.system(cmd)
+
+    demo(cmd)
+def cat_file(putfilename):
+    cmd = "cat " + putfilename
+    print cmd
+
+    list_file(cmd)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:

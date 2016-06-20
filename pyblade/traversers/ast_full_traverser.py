@@ -4,6 +4,8 @@
 #
 #      astfulltraverser.py
 #
+#      Copyright (C) 2015 https://github.com/danielrandall/python-control-flow-graph is origin
+#
 #      Copyright (C) 2015 Yong Huang <huangyong@iscas.ac.cn>
 #
 #      This program is free software; you can redistribute it and/or modify
@@ -20,6 +22,7 @@
 #      along with this program; if not, write to the Free Software
 #      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #      MA 02110-1301, USA.
+
 import ast
 
 from ast_base_traverser import  AstBaseTraverser

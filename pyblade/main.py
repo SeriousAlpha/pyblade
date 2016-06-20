@@ -5,6 +5,7 @@
 #      main.py
 #
 #      Copyright (C) 2014 - 2015 https://github.com/shengqi158/pyvulhunter is origin
+#
 #                   2015 - 2016 revised by Yong Huang <huangyong@iscas.ac.cn>
 #
 #      This program is free software; you can redistribute it and/or modify
@@ -38,6 +39,7 @@ from collections import OrderedDict
 logger = color_log.init_log(logging.DEBUG)
 # DEBUG INFO WARNING ERROR CRITICAL
 DEBUG = True
+ALERT = False
 
 args_ori = set([])
 is_arg_in = False
@@ -147,11 +149,11 @@ class CheckFunc(object):
                 if ast_test.get('comparators'):
                     self.get_func_lines(ast_test.get('comparators'), func_name)
                 if ast_test.get('left'):
-                    self.get_func_lines(ast_test.get('left'),func_name)
+                    self.get_func_lines(ast_test.get('left'), func_name)
             if ast_test and ast_test.get('type') == 'BoolOp':
                 for value in ast_test.get('values'):
                     if value.get('comparators'):
-                        self.get_func_lines(value.get('comparators'),func_name)
+                        self.get_func_lines(value.get('comparators'), func_name)
                     if value.get('left'):
                         self.get_func_lines(value.get('left'), func_name)
 
@@ -274,6 +276,7 @@ class CheckFunc(object):
                                 #print "line-->273 taint function call find! "
 
     def find_taint_func(self):
+        global ALERT
         source = self.tree.get("body")
         for func in source:
             if func.get("type") == "FunctionDef" and func.get("name") == self.taint_func:
@@ -293,10 +296,17 @@ class CheckFunc(object):
                             #print dest.get("id")
                             if self.taint_dests == set([dest.get("id")]):
                                 #print "line -->288 unsafe function and sensitive variable is excute!"
-                                self.alert = "True"
+                                ALERT = True
                             else:
-                                self.alert = "False"
+                                ALERT = False
 
+    def recusive_function(self):
+        source = self.tree.get("body")
+        for func in source:
+            if func.get("type") == "FunctionDef":
+                pass
+                #print func.get("body")
+        pass
 
     def record_all_func(self):
         from copy import deepcopy
@@ -304,14 +314,16 @@ class CheckFunc(object):
         tmp_record_unsafe_func = deepcopy(self.record_unsafe_func)
         for key, value in tmp_record_unsafe_func.iteritems():
             for func_id in value.get('func_ids'):
+                print value.get('func_ids')
                 for func in tmp_record_unsafe_func.values():
                     if func_id in func.get('func_name'):
-                        record.setdefault(key, [value.get('func_name'),func_id,str(func.get('func_ids'))])
+                        record.setdefault(key, [value.get('func_name'), func_id, str(func.get('func_ids'))])
+
 
         for key, value in record.iteritems():
             logger.error("File:%s,line:%s,function:%s" %(self.filename, key, '--->'.join(value)))
 
-        if self.alert == "True":
+        if ALERT:
             for key, value in self.record_unsafe_func.iteritems():
                 logger.error("maybe injected File:%s,    line:%s,    function:%s ---> %s" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
                 print "locate the taint sink function : %s"%( self.lines[key - 1])
@@ -515,7 +527,7 @@ def rec_get_attr_top_id(func, parent, ids):
 '''
 
 def rec_get_targets(targets, out_targets):
-    """recursive to target"""
+    """recursive to find the target"""
     for target in targets:
         if target.get('type') == 'Subscript':
             rec_get_targets([target.get('value')], out_targets)
@@ -710,6 +722,7 @@ def judge_all(filename, check_type):
         judge.record_taint_source()
         judge.store_sensitive_route()
         judge.find_taint_func()
+        judge.recusive_function()
         judge.record_all_func()
     except:
         traceback.print_exc()

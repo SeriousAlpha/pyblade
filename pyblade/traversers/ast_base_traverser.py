@@ -4,6 +4,8 @@
 #
 #      astbasetraverser.py
 #
+#      Copyright (C) 2015 https://github.com/danielrandall/python-control-flow-graph is origin
+#
 #      Copyright (C) 2015 Yong Huang <huangyong@iscas.ac.cn>
 #
 #      This program is free software; you can redistribute it and/or modify
