@@ -55,8 +55,10 @@ FILE_SQL_UNSAFE_FUNCS = set()
 used_import_files = []
 import_func_all = {}
 CMD_COUNT = 0
+VAR_COUNT = 0
+FUNC_COUNT = 0
 
-class CheckFunc(object):
+class Check_func(object):
     """judge the injection base on ast"""
     def __init__(self, filename, check_type):
         try:
@@ -79,7 +81,11 @@ class CheckFunc(object):
         #logger.debug("filename::%r"%self.filename)
         self.body = self.tree.get("body")
         self.func = {}
+        self.funcs = {}
+        self.summary = {}
         self.func_lines = {}
+        self.taint_top = []
+        self.taint_func_top = []
         self.check_type = check_type
         with open(self.filename, 'r') as fd:
             self.lines = fd.readlines()
@@ -94,7 +100,6 @@ class CheckFunc(object):
         self.taint_var = set()
         self.taint_func = set()
         self.taint_dests = set()
-        self.alert = ""
         #logger.debug("filename:%s"%(self.filename))
 
     def get_func_objects(self, body, class_name=None):
@@ -102,11 +107,12 @@ class CheckFunc(object):
         for obj in body:
             if obj.get("type") == "FunctionDef":
                 if class_name:
-                    key = obj.get('name')+":"+class_name
+                    key = obj.get('name')+":" + class_name
                 else:
                     key = obj.get('name')+":"
+                self.get_func_objects(obj.get('body'), obj.get('name'))
                 self.func.setdefault(key, obj)
-                #logger.debug("func:%r"%(obj))
+                #print "110:%r"%self.func
             elif obj.get('type') == 'ClassDef':
                 self.get_func_objects(obj.get('body'), obj.get('name'))
         return
@@ -123,7 +129,6 @@ class CheckFunc(object):
             lines = [func]
         else:
             lines = []
-
         for line in lines:
             ast_body = line.get('body')
             ast_orelse = line.get('orelse')
@@ -138,7 +143,7 @@ class CheckFunc(object):
             elif line.get('type') == 'Call':
                 self.func_lines[func_name].append(line)
                 continue
-
+            #print self.func_lines
             if ast_body:
                 self.get_func_lines(ast_body, func_name)
             if ast_orelse:
@@ -162,6 +167,7 @@ class CheckFunc(object):
         #print "line:",line
         return
 
+
     def parse_func(self, func, class_name, analyse_all):
         global leafs
         global args_ori
@@ -173,11 +179,12 @@ class CheckFunc(object):
         func_name = func.get("name")
         #logger.debug("function_name:%s" %(func_name))
         args_ori = set([arg.get('id') for arg in func.get('args').get("args")]) #arg.id
-#        if class_name and self.arg.get(class_name):
-#            arg_tmp = set(self.arg.get(class_name))
-#            args_ori = args_ori| arg_tmp
+        if class_name and self.arg.get(class_name):
+            arg_tmp = set(self.arg.get(class_name))
+            args_ori = args_ori | arg_tmp
         #logger.debug("args:%s" %str(args_ori))
         self.func_lines.setdefault(func_name, [])
+        #logger.debug("func_lines:%r" %(self.func_lines))
         self.get_func_lines(func, func_name)
         #logger.debug("func_lines:%r" %(lines))
 #        if analyse_all:
@@ -185,25 +192,24 @@ class CheckFunc(object):
         if func_name == '__init__':
             self.arg.setdefault(class_name, args_ori)
 #        self.record_param.setdefault(func_name, args_ori)
-        self.record_param[func_name] = args_ori
+        self.record_param[func_name] = args_ori # ??????
         #if not analyse_all:
         #    print 'func,record_param:', func_name,self.record_param.get(func_name)
         lines = self.func_lines[func_name]
         #对所有有函数执行的语句做进一步处理
         for line in lines:
-            #print "all:%r" %(line)
-#            print "*"*20
+            # print "all:%r" %(line)
+            # print "*"*20
             arg_leafs = []
             is_arg_in = False
             value = line.get("value")
             lineno = line.get("lineno")
             if (value and value.get("type") == "Call") or (line and line.get('type') == 'Call'):
                 #logger.debug("value:%r" %(value))
-                line_func = value.get("func") if value else line.get('func')
-                #print line_func
-                line_func = value if value and value.get('type')=='Call' else line
-                #print line_func
-                value_args = value.get('args') if value else line.get('args')
+                #line_func = value.get("func") if value else line.get('func')
+                #print value, line
+                line_func = value if value and value.get('type') == 'Call' else line
+                #value_args = value.get('args') if value else line.get('args')
                 value = value if value else line
                 func_ids = []
                 rec_get_func_ids(line_func, func_ids)
@@ -217,96 +223,22 @@ class CheckFunc(object):
 #                    look_up_arg(func, args_ori, arg_leafs,func_name)
 #                print "UNTREATED_FUNS", UNTREATED_FUNS
                 if self.check_type.get('cmd') and func_ids and (func_ids & (set(Checklist))) and arg_leafs:
+                    #print "line221:%s"%func_ids
                     if set(arg_leafs) & set(self.record_param.get(func_name)):
+                        #print self.record_param
                         if not is_arg_return_op and func_name not in ("__init__"):
                             FILE_UNSAFE_FUNCS.add(func_name)
                             self.record_unsafe_func.setdefault(lineno, {'func_name':func_name, 'args':args_ori, 'func_ids':func_ids,'arg_leafs':arg_leafs })
                             CMD_COUNT = CMD_COUNT + 1
-
+                            #print CMD_COUNT
 
     def parse_py(self):
         self.get_func_objects(self.body)
 
-        for key,func in self.func.iteritems():
-            self.parse_func(func, key.split(":")[1],True)
-
         for key, func in self.func.iteritems():
-            self.parse_func(func, key.split(":")[1],False)
+            #logger.debug('%r,%r',key, func)
+            self.parse_func(func, key.split(':')[1], True)
 
-    def record_taint_source(self):
-        ''' tiant source marked '''
-        valset = []
-        if 'sys.argv' in Sensilist:
-            source = self.tree.get('body')
-            for obj in source:
-                if obj.get("type") == "If":
-                    value = obj.get('body')
-                    for val in value:
-                        if val.get('type') == 'Assign':
-                            target = val.get('targets')
-                            for ids in target:
-                                self.taint_var = ids.get('id')
-                            ops = val.get('value').get('left')
-                            try:
-                                if isinstance(ops, dict) and ops.get('value').get('attr') == 'argv' and ops.get('value').get('value').get('id') == 'sys':
-                                    lineno = ops.get('value').get('lineno')
-                                    print "locate at lineno:%d  the taint source :  %s "%(lineno ,self.lines[lineno - 1])
-                            except Exception,e:
-                                pass
-                            ops = val.get('value').get('right')
-                            try:
-                                if isinstance(ops, dict) and ops.get('value').get('attr') == 'argv' and ops.get('value').get('value').get('id') == 'sys':
-                                    lineno = ops.get('value').get('lineno')
-                                    print "locate at lineno:%d  the taint source :  %s "%(lineno ,self.lines[lineno - 1])
-                            except Exception,e:
-                                pass
-
-
-    def store_sensitive_route(self):
-        '''to record the taint route'''
-        source = self.tree.get("body")
-        for expr in source:
-            if expr.get("type") == "If":
-                #print isinstance(expr.get("body"),list)
-                for str in expr.get("body"):
-                    if str.get("type") == "Expr" and str.get("value").get("type") == "Call":
-                        for args in str.get("value").get("args"):
-                            if args.get("id") == self.taint_var:
-                                self.taint_func = str.get("value").get("func").get("id")
-                                #print "line-->273 taint function call find! "
-
-    def find_taint_func(self):
-        global ALERT
-        source = self.tree.get("body")
-        for func in source:
-            if func.get("type") == "FunctionDef" and func.get("name") == self.taint_func:
-                #print "line 278 match!"
-                var = set([arg.get('id') for arg in func.get('args').get("args")])
-                for body in func.get("body"):
-                    if body.get("type") == "Assign":
-                        ops = body.get("value").get("right")
-                        try:
-                            if set([ops.get("id")]) == var:
-                                self.taint_dests = set(ids.get("id") for ids in body.get("targets"))
-                        except:
-                            pass
-                        #print self.taint_dests
-                    if body.get("type") == "Expr" and body.get("value").get("type") == "Call":
-                        for dest in body.get("value").get("args"):
-                            #print dest.get("id")
-                            if self.taint_dests == set([dest.get("id")]):
-                                #print "line -->288 unsafe function and sensitive variable is excute!"
-                                ALERT = True
-                            else:
-                                ALERT = False
-
-    def recusive_function(self):
-        source = self.tree.get("body")
-        for func in source:
-            if func.get("type") == "FunctionDef":
-                pass
-                #print func.get("body")
-        pass
 
     def record_all_func(self):
         from copy import deepcopy
@@ -314,11 +246,9 @@ class CheckFunc(object):
         tmp_record_unsafe_func = deepcopy(self.record_unsafe_func)
         for key, value in tmp_record_unsafe_func.iteritems():
             for func_id in value.get('func_ids'):
-                print value.get('func_ids')
                 for func in tmp_record_unsafe_func.values():
                     if func_id in func.get('func_name'):
                         record.setdefault(key, [value.get('func_name'), func_id, str(func.get('func_ids'))])
-
 
         for key, value in record.iteritems():
             logger.error("File:%s,line:%s,function:%s" %(self.filename, key, '--->'.join(value)))
@@ -336,13 +266,158 @@ class CheckFunc(object):
 
             print self.lines[key - 1]
 
-            #print "FILE_UNSAFE_FUNCS",FILE_UNSAFE_FUNCS
+
+    def record_taint_source(self):
+        ''' tiant source marked '''
+        valset = []
+        global VAR_COUNT
+        if 'sys.argv' in Sensilist:
+            for obj in self.body:
+                if obj.get("type") == "If":
+                    value = obj.get('body')
+                    for val in value:
+                        if val.get('type') == 'Assign':
+                            ops = val.get('value')
+                            target = val.get('targets')
+                            for ids in target:
+                                self.taint_var = ids.get('id')
+                                self.taint_top = [ids.get('id')]
+                            try:
+                                if isinstance(ops, dict) and ops.get('left').get('value').get('attr') == 'argv' \
+                                        and ops.get('left').get('value').get('value').get('id') == 'sys':
+                                    lineno = ops.get('left').get('value').get('lineno')
+                                    print "locate at lineno:%d  the taint source :  %s "%(lineno, self.lines[lineno - 1])
+                            except Exception,e:
+                                pass
+                            try:
+                                if isinstance(ops, dict) and ops.get('right').get('value').get('attr') == 'argv' \
+                                        and ops.get('right').get('value').get('value').get('id') == 'sys':
+                                    lineno = ops.get('right').get('value').get('lineno')
+                                    print "locate at lineno:%d  the taint source :  %s "%(lineno, self.lines[lineno - 1])
+                            except Exception,e:
+                                pass
+        VAR_COUNT = VAR_COUNT + 1
+
+
+    def find_function_def(self, body):
+        for obj in body:
+            if obj.get("type") == "FunctionDef":
+                key = obj.get('name') + ":"
+                self.find_function_def(obj.get('body'))
+                self.funcs.setdefault(key, obj)
+                print key,obj
+
+
+    def find_function_expr(self, funcs):
+        func_call = {}
+        assign_stat = {}
+        for key, value in funcs.iteritems():
+            for arg in value.get('args').get('args'):
+                argument = arg.get('id')
+                self.summary.setdefault(key, {"argument": argument})
+            for types in value.get('body'):
+                type_ = types.get('type')
+                if type_ == "Assign":
+                    if types.get('value').get('type') == 'BinOp':
+                        pass
+                    for target in types.get('targets'):
+                        dest = target.get('id')
+                    #print dest
+
+                if type_ == "FunctionDef":
+                    for obj in types.get('body'):
+                        type_t = obj.get('type')
+                        if type_t == "Assign":
+                            #print obj.get('value')
+                            pass
+                        if type_t == "Expr":
+                            pass
+                            #print obj.get('value')
+
+                if type_ == "Expr":
+                    if types.get('value').get('type') == 'Call':
+                        func_id = types.get('value').get('func').get('id')
+                        for arg in types.get('value').get('args'):
+                            id_ = arg.get('id')
+                        func_call.setdefault(func_id, id_)
+                    #print func_call
+
+        #print self.summary
+
+
+    '''def find_args_leafs(self, args):
+        for arg in args:
+            self.find_args_leafs(arg)
+            print arg
+'''
+    def call_function(self):
+        self.find_function_def(self.body)
+        self.find_function_expr(self.funcs)
+
+
+    def store_sensitive_route(self):
+        global FUNC_COUNT
+        '''to record the taint route'''
+        self.record_taint_source()
+        for expr in self.body:
+            if expr.get("type") == "If":
+                for str in expr.get("body"):
+                    if str.get("type") == "Expr" and str.get("value").get("type") == "Call":
+                        for args in str.get("value").get("args"):
+                            if args.get("id") == self.taint_var:
+                                self.taint_func = str.get("value").get("func").get("id")
+                                self.taint_func_top = [self.taint_func]
+        FUNC_COUNT = FUNC_COUNT + 1
+
+
+    def find_taint_func(self):
+        global ALERT
+        global VAR_COUNT
+        self.store_sensitive_route()
+        for func in self.body:
+            if func.get("type") == "FunctionDef" and func.get("name") == self.taint_func:
+                #print "line 278 match!"
+                for arg in func.get('args').get("args"):
+                    var = arg.get('id')
+                self.taint_top.append(var)
+                for body in func.get("body"):
+                    if body.get("type") == "Assign":
+                        ops = body.get("value").get("right")
+                        try:
+                            if ops.get("id") == self.taint_top[VAR_COUNT]:
+                                for ids in body.get("targets"):
+                                    self.taint_dests = ids.get("id")
+                                    self.taint_top.append(self.taint_dests)
+                        except:
+                            pass
+
+                    if body.get("type") == "Expr" and body.get("value").get("type") == "Call":
+                        self.taint_func_top.append(body.get('value').get('func').get('id'))
+                        for dest in body.get("value").get("args"):
+                            if self.taint_dests == dest.get("id"):
+                                ALERT = True
+                            else:
+                                ALERT = False
+            #logger.debug('%r',self.taint_func_top[FUNC_COUNT])
+            #print func.get('name')
+            if func.get("type") == "FunctionDef" and func.get('name') == self.taint_func_top[-1]:
+                print "True"
+            #    print func.get('name')
+            #    print func
+
+        VAR_COUNT = VAR_COUNT + 1
+
+class Path_node(object):
+    pass
+
+class Path(object):
+    pass
 
 def find_all_leafs(args, leafs):
 
     for arg in args:
         find_arg_leafs(arg, leafs)
-
+'''
 def find_func_leafs(value, args_ori, target_ids, import_func):
     """handle the situation of function"""
     value_arg_ids = []
@@ -365,7 +440,7 @@ def find_func_leafs(value, args_ori, target_ids, import_func):
         elif target_ids:
             args_ori.difference_update(target_ids)
             #logger.warn("In Assign,Call delete (%r) from (%r) where line=(%r)" %(target_ids,args_ori,value.get('lineno')))
-
+'''
 def find_arg_leafs(arg, leafs):
     """通过递归找到全所有子节点,历史原因复数格式不修正"""
     fields = arg.get("_fields")
@@ -644,6 +719,7 @@ def rec_get_func_ids(func, func_ids):#处理连续的unicode.encode等
                 rec_get_func_ids(args, func_ids)
     return
 
+
 def get_pythonpaths():
     pythonpath = os.environ.get('PYTHONPATH')
     pythonpaths = [path for path in pythonpath.split(':') if 'python' not in path]
@@ -712,18 +788,18 @@ def main():
 def judge_all(filename, check_type):
     global used_import_files
     try:
-        judge = CheckFunc(filename, check_type)
+        judge = Check_func(filename, check_type)
         #print judge.import_module
         for import_file, value in judge.import_module.iteritems():
             if import_file and import_file not in used_import_files:
                 used_import_files.append(import_file)
                 judge_all(import_file, check_type)
         judge.parse_py()
-        judge.record_taint_source()
-        judge.store_sensitive_route()
+        judge.call_function()
+        #judge.store_sensitive_route()
         judge.find_taint_func()
-        judge.recusive_function()
         judge.record_all_func()
+
     except:
         traceback.print_exc()
 
@@ -735,6 +811,4 @@ if __name__ == "__main__":
     #s_ast = cfg.parse_file(fn)
     #cfgGenerate.PrintCFG(s_ast)
     main()
-
-
 
