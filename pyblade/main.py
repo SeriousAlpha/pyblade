@@ -350,15 +350,11 @@ class Check_func(object):
             self.find_args_leafs(arg)
             print arg
 '''
-    def call_function(self):
-        self.find_function_def(self.body)
-        self.find_function_expr(self.funcs)
 
 
     def store_sensitive_route(self):
-        global FUNC_COUNT
         '''to record the taint route'''
-        self.record_taint_source()
+        global FUNC_COUNT
         for expr in self.body:
             if expr.get("type") == "If":
                 for str in expr.get("body"):
@@ -370,10 +366,10 @@ class Check_func(object):
         FUNC_COUNT = FUNC_COUNT + 1
 
 
+
     def find_taint_func(self):
         global ALERT
         global VAR_COUNT
-        self.store_sensitive_route()
         for func in self.body:
             if func.get("type") == "FunctionDef" and func.get("name") == self.taint_func:
                 #print "line 278 match!"
@@ -406,6 +402,17 @@ class Check_func(object):
             #    print func
 
         VAR_COUNT = VAR_COUNT + 1
+        #logger.debug('find taint func')
+
+    #todo: temp variable problem
+    def call_function(self):
+        self.record_taint_source()
+        #logger.debug("record taint source")
+        # self.find_function_def(self.body)
+        self.find_function_expr(self.funcs)
+
+        self.store_sensitive_route()
+        self.find_taint_func()
 
 class Path_node(object):
     pass
@@ -796,8 +803,6 @@ def judge_all(filename, check_type):
                 judge_all(import_file, check_type)
         judge.parse_py()
         judge.call_function()
-        #judge.store_sensitive_route()
-        judge.find_taint_func()
         judge.record_all_func()
 
     except:
@@ -805,8 +810,6 @@ def judge_all(filename, check_type):
 
 
 if __name__ == "__main__":
-    fn = "D:/githubsvn/gitlabpyblade/pyblade/test1/taintanalysis.py"
-    #fn = "D:/githubsvn/gitlabpyblade/pyblade/test/test3.py"
     #cfg = cfgGenerate.ControlFlowGraph()
     #s_ast = cfg.parse_file(fn)
     #cfgGenerate.PrintCFG(s_ast)
