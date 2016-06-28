@@ -31,8 +31,7 @@ import os
 import re
 import traceback
 import sys
-import subprocess
-#import cfg_generate
+import cfg_generate
 from optparse import OptionParser
 from collections import OrderedDict
 
@@ -99,7 +98,6 @@ class Analyzer(object):
         self.arg = {}
         self.taint_var = set()
         self.taint_func = set()
-        self.taint_dests = set()
         #logger.debug("filename:%s"%(self.filename))
 
     def get_func_objects(self, body, class_name=None):
@@ -282,6 +280,7 @@ class Analyzer(object):
                             for ids in target:
                                 self.taint_var = ids.get('id')
                                 self.taint_top = [ids.get('id')]
+                                #print "%r"%self.taint_top
                             try:
                                 if isinstance(ops, dict) and ops.get('left').get('value').get('attr') == 'argv' \
                                         and ops.get('left').get('value').get('value').get('id') == 'sys':
@@ -308,50 +307,12 @@ class Analyzer(object):
                 self.funcs.setdefault(key, obj)
                 print key, obj
 
-    #todo: finish the classify
-    def find_function_expr(self, funcs):
-        ''' to classify the source to Assign , FunctionDef, Expr'''
-        func_call = {}
-        assign_stat = {}
-        for key, value in funcs.iteritems():
-            for arg in value.get('args').get('args'):
-                argument = arg.get('id')
-                self.summary.setdefault(key, {"argument": argument})
-            for types in value.get('body'):
-                type_ = types.get('type')
-                if type_ == "Assign":
-                    if types.get('value').get('type') == 'BinOp':
-                        pass
-                    for target in types.get('targets'):
-                        dest = target.get('id')
-                    #print dest
-
-                if type_ == "FunctionDef":
-                    for obj in types.get('body'):
-                        type_t = obj.get('type')
-                        if type_t == "Assign":
-                            #print obj.get('value')
-                            pass
-                        if type_t == "Expr":
-                            pass
-                            #print obj.get('value')
-
-                if type_ == "Expr":
-                    if types.get('value').get('type') == 'Call':
-                        func_id = types.get('value').get('func').get('id')
-                        for arg in types.get('value').get('args'):
-                            id_ = arg.get('id')
-                        func_call.setdefault(func_id, id_)
-                    #print func_call
-
-        #print self.summary
 
 
     '''def find_args_leafs(self, args):
         for arg in args:
             self.find_args_leafs(arg)
-            print arg
-'''
+            print arg'''
 
 
     def store_sensitive_route(self):
@@ -364,36 +325,34 @@ class Analyzer(object):
                         for args in str.get("value").get("args"):
                             if args.get("id") == self.taint_var:
                                 self.taint_func = str.get("value").get("func").get("id")
-                                self.taint_func_top = [self.taint_func]
+                                self.taint_func_top = [self.taint_func]    #store catfile
+                                #print self.taint_func_top
         FUNC_COUNT = FUNC_COUNT + 1
 
 
     def find_taint_func(self):
         global ALERT
         global VAR_COUNT
-        self.store_sensitive_route()
+
         for func in self.body:
             if func.get("type") == "FunctionDef" and func.get("name") == self.taint_func:
-                #print "line 278 match!"
-                for arg in func.get('args').get("args"):
-                    var = arg.get('id')
+                var = self.get_function_args(func)
                 self.taint_top.append(var)
+                taint_dests = self.get_assign_target(func, var)
+                self.taint_top.append(taint_dests)
+                print self.taint_top
                 for body in func.get("body"):
-                    if body.get("type") == "Assign":
-                        ops = body.get("value").get("right")
-                        try:
-                            if ops.get("id") == self.taint_top[VAR_COUNT]:
-                                for ids in body.get("targets"):
-                                    self.taint_dests = ids.get("id")
-                                    self.taint_top.append(self.taint_dests)
-                        except:
-                            pass
-
                     if body.get("type") == "Expr" and body.get("value").get("type") == "Call":
                         self.taint_func_top.append(body.get('value').get('func').get('id'))
                         for dest in body.get("value").get("args"):
-                            if self.taint_dests == dest.get("id"):
-                                ALERT = True
+                            if taint_dests == dest.get("id"):     # cmd = "cat " + filename  -> lineno:21 list_file(cmd)
+                                for funcs in self.body:
+                                    if funcs.get("type") == "FunctionDef" and funcs.get("name") == self.taint_func_top[-1]:
+                                        vars = self.get_function_args(funcs)
+                                        self.taint_top.append(vars)     #list_file(filename)
+                                        target = self.get_assign_target(funcs, vars)
+                                        self.taint_top.append(target)
+                                        print self.taint_top
                             else:
                                 ALERT = False
             #logger.debug('%r',self.taint_func_top[FUNC_COUNT])
@@ -408,22 +367,30 @@ class Analyzer(object):
         VAR_COUNT = VAR_COUNT + 1
         #logger.debug('find taint func')
 
+    def get_function_args(self, func):
+        for args in func.get('args').get('args'):
+            var = args.get('id')
+        return var
+
+    def get_assign_target(self, func, taint):
+        for body in func.get('body'):
+            if body.get("type") == "Assign":
+                ops = body.get("value").get("right")
+                try:
+                    if ops.get("id") == taint:
+                        for ids in body.get("targets"):
+                            target = ids.get("id")
+                except:
+                    pass
+        return target
+
     #todo: temp variable problem
-    def call_function(self):
-        self.record_taint_source()
-        #logger.debug("record taint source")
-        # self.find_function_def(self.body)
-        self.find_function_expr(self.funcs)
-
-        self.store_sensitive_route()
-        self.find_taint_func()
-
     def source_to_sink(self):
         '''source ->path -> sink'''
         #self.find_function_def(self.body)
         self.record_taint_source()
-        logger.debug('record taint source execute!')
-        self.find_function_expr(self.funcs)
+        #logger.debug('record taint source execute!')
+        #self.find_function_expr(self.funcs)
         #print 'find function expr'
         self.store_sensitive_route()
         #print 'store sensitive route'
@@ -828,8 +795,14 @@ def judge_all(filename, check_type):
 
 
 if __name__ == "__main__":
-    #cfg = cfgGenerate.ControlFlowGraph()
-    #s_ast = cfg.parse_file(fn)
-    #cfgGenerate.PrintCFG(s_ast)
+    cfg = cfg_generate.ControlFlowGraph()
+    parent_path = os.path.abspath('..')
+    fn = os.path.join(parent_path, 'tests')
+    filenames = walk_dir(fn)
+    for filename in filenames:
+        pass
+        #s_ast = cfg.parse_file(filename)
+        #todo: sys.argv will influence the cfg
+    #cfg_generate.PrintCFG(s_ast)
     main()
 

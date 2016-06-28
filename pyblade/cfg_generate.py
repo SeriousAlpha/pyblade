@@ -21,12 +21,12 @@
 
 
 
-'''
-Creates a control flow graph (cfg)
-'''
+'''Creates a control flow graph (cfg)'''
 
 
 import ast
+#import os
+#import main
 from pprint import pprint
 
 from traversers.ast_full_traverser import AstFullTraverser
@@ -467,12 +467,15 @@ class PrintCFG(AstFullTraverser):
         if block.next_block:
             self.process_blocks(block.next_block)
         
-        
-#if __name__ == '__main__':
-#    fn = "D:/githubsvn/cfgtraverser/src/file.py"
-#    cfg = ControlFlowGraph()
-#    s_ast = cfg.parse_file(fn)
-#    PrintCFG(s_ast)
-    
-        
+'''
+if __name__ == '__main__':
+    cfg = ControlFlowGraph()
+    parent_path = os.path.abspath('..')
+    fn = os.path.join(parent_path, 'tests')
+    filenames = main.walk_dir(fn)
+    for filename in filenames:
+        s_ast = cfg.parse_file(filename)
+        #todo: sys.argv will influence the cfg
+    PrintCFG(s_ast)
+'''
         
