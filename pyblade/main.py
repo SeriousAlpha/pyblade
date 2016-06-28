@@ -58,7 +58,7 @@ CMD_COUNT = 0
 VAR_COUNT = 0
 FUNC_COUNT = 0
 
-class Check_func(object):
+class Analyzer(object):
     """judge the injection base on ast"""
     def __init__(self, filename, check_type):
         try:
@@ -303,12 +303,14 @@ class Check_func(object):
         for obj in body:
             if obj.get("type") == "FunctionDef":
                 key = obj.get('name') + ":"
+                #todo: improve the recursion
                 self.find_function_def(obj.get('body'))
                 self.funcs.setdefault(key, obj)
-                print key,obj
+                print key, obj
 
-
+    #todo: finish the classify
     def find_function_expr(self, funcs):
+        ''' to classify the source to Assign , FunctionDef, Expr'''
         func_call = {}
         assign_stat = {}
         for key, value in funcs.iteritems():
@@ -350,15 +352,10 @@ class Check_func(object):
             self.find_args_leafs(arg)
             print arg
 '''
-    def call_function(self):
-        self.find_function_def(self.body)
-        self.find_function_expr(self.funcs)
-
 
     def store_sensitive_route(self):
         global FUNC_COUNT
         '''to record the taint route'''
-        self.record_taint_source()
         for expr in self.body:
             if expr.get("type") == "If":
                 for str in expr.get("body"):
@@ -373,7 +370,6 @@ class Check_func(object):
     def find_taint_func(self):
         global ALERT
         global VAR_COUNT
-        self.store_sensitive_route()
         for func in self.body:
             if func.get("type") == "FunctionDef" and func.get("name") == self.taint_func:
                 #print "line 278 match!"
@@ -400,16 +396,30 @@ class Check_func(object):
                                 ALERT = False
             #logger.debug('%r',self.taint_func_top[FUNC_COUNT])
             #print func.get('name')
-            if func.get("type") == "FunctionDef" and func.get('name') == self.taint_func_top[-1]:
+            #todo: the last elements in list not always make things right
+            #print self.taint_func_top
+            if func.get("type") == "FunctionDef" and func.get('name') == self.taint_func_top:
                 print "True"
             #    print func.get('name')
             #    print func
 
         VAR_COUNT = VAR_COUNT + 1
 
+    def source_to_sink(self):
+        '''source ->path -> sink'''
+        #self.find_function_def(self.body)
+        self.record_taint_source()
+        logger.debug('record taint source execute!')
+        self.find_function_expr(self.funcs)
+        #print 'find function expr'
+        self.store_sensitive_route()
+        #print 'store sensitive route'
+
+#todo: store the sensitive path node
 class Path_node(object):
     pass
 
+#todo: store the path
 class Path(object):
     pass
 
@@ -777,7 +787,7 @@ def main():
             print "您输入的文件或者路径不存在"
             sys.exit()
     for filename in files:
-        #print "filename",filename
+        print "filename",filename
         try:
             judge_all(filename, check_type)
         except Exception, e:
@@ -788,15 +798,15 @@ def main():
 def judge_all(filename, check_type):
     global used_import_files
     try:
-        judge = Check_func(filename, check_type)
+        judge = Analyzer(filename, check_type)
         #print judge.import_module
         for import_file, value in judge.import_module.iteritems():
             if import_file and import_file not in used_import_files:
                 used_import_files.append(import_file)
                 judge_all(import_file, check_type)
         judge.parse_py()
-        judge.call_function()
-        #judge.store_sensitive_route()
+        #todo: let the function execute sequencely
+        judge.source_to_sink()
         judge.find_taint_func()
         judge.record_all_func()
 
