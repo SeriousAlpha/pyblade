@@ -353,9 +353,10 @@ class Analyzer(object):
             print arg
 '''
 
+
     def store_sensitive_route(self):
-        global FUNC_COUNT
         '''to record the taint route'''
+        global FUNC_COUNT
         for expr in self.body:
             if expr.get("type") == "If":
                 for str in expr.get("body"):
@@ -370,6 +371,7 @@ class Analyzer(object):
     def find_taint_func(self):
         global ALERT
         global VAR_COUNT
+        self.store_sensitive_route()
         for func in self.body:
             if func.get("type") == "FunctionDef" and func.get("name") == self.taint_func:
                 #print "line 278 match!"
@@ -404,6 +406,17 @@ class Analyzer(object):
             #    print func
 
         VAR_COUNT = VAR_COUNT + 1
+        #logger.debug('find taint func')
+
+    #todo: temp variable problem
+    def call_function(self):
+        self.record_taint_source()
+        #logger.debug("record taint source")
+        # self.find_function_def(self.body)
+        self.find_function_expr(self.funcs)
+
+        self.store_sensitive_route()
+        self.find_taint_func()
 
     def source_to_sink(self):
         '''source ->path -> sink'''
@@ -414,6 +427,7 @@ class Analyzer(object):
         #print 'find function expr'
         self.store_sensitive_route()
         #print 'store sensitive route'
+        self.find_taint_func()
 
 #todo: store the sensitive path node
 class Path_node(object):
@@ -787,7 +801,7 @@ def main():
             print "您输入的文件或者路径不存在"
             sys.exit()
     for filename in files:
-        print "filename",filename
+        #print "filename",filename
         try:
             judge_all(filename, check_type)
         except Exception, e:
@@ -807,7 +821,6 @@ def judge_all(filename, check_type):
         judge.parse_py()
         #todo: let the function execute sequencely
         judge.source_to_sink()
-        judge.find_taint_func()
         judge.record_all_func()
 
     except:
@@ -815,8 +828,6 @@ def judge_all(filename, check_type):
 
 
 if __name__ == "__main__":
-    fn = "D:/githubsvn/gitlabpyblade/pyblade/test1/taintanalysis.py"
-    #fn = "D:/githubsvn/gitlabpyblade/pyblade/test/test3.py"
     #cfg = cfgGenerate.ControlFlowGraph()
     #s_ast = cfg.parse_file(fn)
     #cfgGenerate.PrintCFG(s_ast)
