@@ -333,14 +333,12 @@ class Analyzer(object):
     def find_taint_func(self):
         global ALERT
         global VAR_COUNT
-
         for func in self.body:
             if func.get("type") == "FunctionDef" and func.get("name") == self.taint_func:
-                var = self.get_function_args(func)
+                var = get_function_args(func)
                 self.taint_top.append(var)
-                taint_dests = self.get_assign_target(func, var)
+                taint_dests = get_assign_target(func, var)
                 self.taint_top.append(taint_dests)
-                print self.taint_top
                 for body in func.get("body"):
                     if body.get("type") == "Expr" and body.get("value").get("type") == "Call":
                         self.taint_func_top.append(body.get('value').get('func').get('id'))
@@ -348,9 +346,10 @@ class Analyzer(object):
                             if taint_dests == dest.get("id"):     # cmd = "cat " + filename  -> lineno:21 list_file(cmd)
                                 for funcs in self.body:
                                     if funcs.get("type") == "FunctionDef" and funcs.get("name") == self.taint_func_top[-1]:
-                                        vars = self.get_function_args(funcs)
+                                        print funcs.get('body')
+                                        vars = get_function_args(funcs)
                                         self.taint_top.append(vars)     #list_file(filename)
-                                        target = self.get_assign_target(funcs, vars)
+                                        target = get_assign_target(funcs, vars)
                                         self.taint_top.append(target)
                                         print self.taint_top
                             else:
@@ -367,22 +366,7 @@ class Analyzer(object):
         VAR_COUNT = VAR_COUNT + 1
         #logger.debug('find taint func')
 
-    def get_function_args(self, func):
-        for args in func.get('args').get('args'):
-            var = args.get('id')
-        return var
 
-    def get_assign_target(self, func, taint):
-        for body in func.get('body'):
-            if body.get("type") == "Assign":
-                ops = body.get("value").get("right")
-                try:
-                    if ops.get("id") == taint:
-                        for ids in body.get("targets"):
-                            target = ids.get("id")
-                except:
-                    pass
-        return target
 
     #todo: temp variable problem
     def source_to_sink(self):
@@ -408,6 +392,25 @@ def find_all_leafs(args, leafs):
 
     for arg in args:
         find_arg_leafs(arg, leafs)
+
+
+def get_function_args(func):
+    for args in func.get('args').get('args'):
+        var = args.get('id')
+    return var
+
+
+def get_assign_target(func, taint):
+    for body in func.get('body'):
+        if body.get("type") == "Assign":
+            ops = body.get("value").get("right")
+            try:
+                if ops.get("id") == taint:
+                    for ids in body.get("targets"):
+                        target = ids.get("id")
+            except:
+                pass
+    return target
 '''
 def find_func_leafs(value, args_ori, target_ids, import_func):
     """handle the situation of function"""
@@ -786,7 +789,6 @@ def judge_all(filename, check_type):
                 used_import_files.append(import_file)
                 judge_all(import_file, check_type)
         judge.parse_py()
-        #todo: let the function execute sequencely
         judge.source_to_sink()
         judge.record_all_func()
 
