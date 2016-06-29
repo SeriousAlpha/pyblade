@@ -54,8 +54,7 @@ FILE_SQL_UNSAFE_FUNCS = set()
 used_import_files = []
 import_func_all = {}
 CMD_COUNT = 0
-VAR_COUNT = 0
-FUNC_COUNT = 0
+
 
 class Analyzer(object):
     """judge the injection base on ast"""
@@ -268,7 +267,6 @@ class Analyzer(object):
     def record_taint_source(self):
         ''' tiant source marked '''
         valset = []
-        global VAR_COUNT
         if 'sys.argv' in Sensilist:
             for obj in self.body:
                 if obj.get("type") == "If":
@@ -295,7 +293,6 @@ class Analyzer(object):
                                     print "locate at lineno:%d  the taint source :  %s "%(lineno, self.lines[lineno - 1])
                             except Exception,e:
                                 pass
-        VAR_COUNT = VAR_COUNT + 1
 
 
     def find_function_def(self, body):
@@ -317,7 +314,6 @@ class Analyzer(object):
 
     def store_sensitive_route(self):
         '''to record the taint route'''
-        global FUNC_COUNT
         for expr in self.body:
             if expr.get("type") == "If":
                 for str in expr.get("body"):
@@ -326,13 +322,9 @@ class Analyzer(object):
                             if args.get("id") == self.taint_var:
                                 self.taint_func = str.get("value").get("func").get("id")
                                 self.taint_func_top = [self.taint_func]    #store catfile
-                                #print self.taint_func_top
-        FUNC_COUNT = FUNC_COUNT + 1
-
 
     def find_taint_func(self):
         global ALERT
-        global VAR_COUNT
         for func in self.body:
             if func.get("type") == "FunctionDef" and func.get("name") == self.taint_func:
                 var = get_function_args(func)
@@ -343,28 +335,36 @@ class Analyzer(object):
                     if body.get("type") == "Expr" and body.get("value").get("type") == "Call":
                         self.taint_func_top.append(body.get('value').get('func').get('id'))
                         for dest in body.get("value").get("args"):
-                            if taint_dests == dest.get("id"):     # cmd = "cat " + filename  -> lineno:21 list_file(cmd)
+                            if self.taint_top[-1] == dest.get("id"):     # cmd = "cat " + filename  -> lineno:21 list_file(cmd)
                                 for funcs in self.body:
                                     if funcs.get("type") == "FunctionDef" and funcs.get("name") == self.taint_func_top[-1]:
-                                        print funcs.get('body')
                                         vars = get_function_args(funcs)
                                         self.taint_top.append(vars)     #list_file(filename)
+                                        #if get_assign_target(funcs, vars):
                                         target = get_assign_target(funcs, vars)
                                         self.taint_top.append(target)
-                                        print self.taint_top
-                            else:
-                                ALERT = False
-            #logger.debug('%r',self.taint_func_top[FUNC_COUNT])
-            #print func.get('name')
-            #todo: the last elements in list not always make things right
-            #print self.taint_func_top
-            if func.get("type") == "FunctionDef" and func.get('name') == self.taint_func_top:
-                print "True"
-            #    print func.get('name')
-            #    print func
+                                        inner_func = check_inner_function(funcs)
+                                        for keys, values in inner_func.iteritems():
+                                            self.taint_func_top.append(keys)  # demo(filename) inner
+                                        print self.taint_func_top
+                                        for funcs_ in funcs.get('body'):
+                                            if funcs_.get('type') == 'Expr' and funcs_.get('value').get('type') == 'Call':
+                                                for args in funcs_.get('value').get('args'):
+                                                    if args.get('id') == self.taint_top[-1]:
+                                                        if funcs_.get('value').get('func').get('id') == self.taint_func_top[-1]:
+                                                            self.taint_top.append(values)
+                                                            #todo fix the bug of not in the demo() function
+                                                            new_target = get_assign_target(funcs, self.taint_top[-1])  #the break present that line7
+                                                            self.taint_top.append(new_target)
+                                                            print self.taint_top
+                                                            for key, value in self.record_unsafe_func.iteritems():
+                                                                print key,value
+                                                                if value.get('arg_leafs') == [self.taint_top[-1]]:
+                                                                    ALERT = True
+                                                                else:
+                                                                    ALERT = False
 
-        VAR_COUNT = VAR_COUNT + 1
-        #logger.debug('find taint func')
+
 
 
 
@@ -394,6 +394,7 @@ def find_all_leafs(args, leafs):
         find_arg_leafs(arg, leafs)
 
 
+
 def get_function_args(func):
     for args in func.get('args').get('args'):
         var = args.get('id')
@@ -401,16 +402,28 @@ def get_function_args(func):
 
 
 def get_assign_target(func, taint):
+    target_ = 'none'
     for body in func.get('body'):
         if body.get("type") == "Assign":
-            ops = body.get("value").get("right")
-            try:
-                if ops.get("id") == taint:
+            ops = body.get('value')
+            if "right" in ops:
+                ops_ = ops.get("right")
+                if ops_.get("id") == taint:
                     for ids in body.get("targets"):
-                        target = ids.get("id")
-            except:
-                pass
-    return target
+                        target_ = ids.get("id")
+    return target_
+
+def check_inner_function(func):
+    funcs = {}
+    for fun in func.get('body'):
+        if fun.get('type') == 'FunctionDef':
+            func_name = fun.get('name')
+            var = get_function_args(fun)
+        else:
+            pass
+    funcs.setdefault(func_name, var)
+    return funcs
+
 '''
 def find_func_leafs(value, args_ori, target_ids, import_func):
     """handle the situation of function"""
@@ -497,7 +510,6 @@ def find_arg_leafs(arg, leafs):
                 leafs.append(left_id)
         if "left" in fields and arg.get("left").get("_fields"):
             find_arg_leafs(arg.get("left"), leafs)
-
     return
 
 '''
