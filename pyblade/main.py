@@ -346,25 +346,32 @@ class Analyzer(object):
                                         inner_func = check_inner_function(funcs)
                                         for keys, values in inner_func.iteritems():
                                             self.taint_func_top.append(keys)  # demo(filename) inner
-                                        print self.taint_func_top
+                                        #print self.taint_func_top
                                         for funcs_ in funcs.get('body'):
+                                            #print funcs_
                                             if funcs_.get('type') == 'Expr' and funcs_.get('value').get('type') == 'Call':
                                                 for args in funcs_.get('value').get('args'):
                                                     if args.get('id') == self.taint_top[-1]:
                                                         if funcs_.get('value').get('func').get('id') == self.taint_func_top[-1]:
                                                             self.taint_top.append(values)
-                                                            #todo fix the bug of not in the demo() function
-                                                            new_target = get_assign_target(funcs, self.taint_top[-1])  #the break present that line7
-                                                            self.taint_top.append(new_target)
-                                                            print self.taint_top
-                                                            for key, value in self.record_unsafe_func.iteritems():
-                                                                print key,value
-                                                                if value.get('arg_leafs') == [self.taint_top[-1]]:
-                                                                    ALERT = True
-                                                                else:
-                                                                    ALERT = False
 
-
+                                for bodys in self.body:
+                                    if bodys.get("type") == "FunctionDef" and bodys.get("name") == self.taint_func_top[1]:
+                                        for bodys_ in bodys.get('body'):
+                                            if bodys_.get('type') == 'FunctionDef':
+                                                for indexs in bodys_.get('body'):
+                                                    if indexs.get('type') == 'Assign':
+                                                        ops_ = indexs.get('value')
+                                                        if 'right' in ops_:
+                                                            if ops_.get('right').get('id') == self.taint_top[-1]:
+                                                                for id_ in indexs.get('targets'):
+                                                                    self.taint_top.append(id_.get('id'))
+                                                                    for key, value in self.record_unsafe_func.iteritems():
+                                                                        #print key, value
+                                                                        if value.get('arg_leafs') == [self.taint_top[-1]]:
+                                                                            ALERT = True
+                                                                        else:
+                                                                            ALERT = False
 
 
 
