@@ -799,21 +799,12 @@ def main():
             traceback.print_exc()
 
 
-def scan(filename, check_type):
-    global used_import_files
-    try:
-        judge = Analyzer(filename, check_type)
-        #print judge.import_module
-        for import_file, value in judge.import_module.iteritems():
-            if import_file and import_file not in used_import_files:
-                used_import_files.append(import_file)
-                scan(import_file, check_type)
-        judge.parse_py()
-        judge.source_to_sink()
-        judge.record_all_func()
-
-    except:
-        traceback.print_exc()
+def scan(filename):
+    check_type = {'cmd': cmd_check, 'verbose': verbose}
+    judge = Analyzer(filename, check_type)
+    judge.parse_py()
+    judge.source_to_sink()
+    judge.record_all_func()
 
 
 if __name__ == "__main__":

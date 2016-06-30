@@ -1,0 +1,3 @@
+
+def scan(file):
+    pass
