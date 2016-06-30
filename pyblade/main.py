@@ -366,6 +366,7 @@ class Analyzer(object):
                                                             if ops_.get('right').get('id') == self.taint_top[-1]:
                                                                 for id_ in indexs.get('targets'):
                                                                     self.taint_top.append(id_.get('id'))
+                                                                    print self.taint_top
                                                                     for key, value in self.record_unsafe_func.iteritems():
                                                                         #print key, value
                                                                         if value.get('arg_leafs') == [self.taint_top[-1]]:
@@ -375,7 +376,7 @@ class Analyzer(object):
 
 
 
-    #todo: temp variable problem
+
     def source_to_sink(self):
         '''source ->path -> sink'''
         #self.find_function_def(self.body)
@@ -792,13 +793,13 @@ def main():
     for filename in files:
         #print "filename",filename
         try:
-            judge_all(filename, check_type)
+            scan(filename, check_type)
         except Exception, e:
             print filename
             traceback.print_exc()
 
 
-def judge_all(filename, check_type):
+def scan(filename, check_type):
     global used_import_files
     try:
         judge = Analyzer(filename, check_type)
@@ -806,7 +807,7 @@ def judge_all(filename, check_type):
         for import_file, value in judge.import_module.iteritems():
             if import_file and import_file not in used_import_files:
                 used_import_files.append(import_file)
-                judge_all(import_file, check_type)
+                scan(import_file, check_type)
         judge.parse_py()
         judge.source_to_sink()
         judge.record_all_func()
@@ -826,4 +827,3 @@ if __name__ == "__main__":
         #todo: sys.argv will influence the cfg
     #cfg_generate.PrintCFG(s_ast)
     main()
-
