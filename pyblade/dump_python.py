@@ -93,12 +93,28 @@ def parse_json(filename):
     except:
         return ""
 
+def parse_json_text(filename, lines):
+    #print 'parse_json'
+    try:
+        if is_python3:
+            encoder = AstEncoder()
+        else:
+            encoder = AstEncoder(encoding=enc)
+
+        tree = parse_string(lines, filename)
+        encoded = encoder.encode(tree)
+        return encoded
+    except:
+        return ""
+
+
 
 def parse_file(filename):
 #    print 'parse file'
     global enc, lines
     enc, enc_len = detect_encoding(filename)
     f = codecs.open(filename, 'r', enc)
+
     lines = f.read()
 
     # remove BOM
@@ -107,11 +123,13 @@ def parse_file(filename):
     # replace the encoding decl by spaces to fool python parser
     # otherwise you get 'encoding decl in unicode string' syntax error
     # print('enc:', enc, 'enc_len', enc_len)
+
     if enc_len > 0:
         lines = re.sub('#.*coding\s*[:=]\s*[\w\d\-]+',  '#' + ' ' * (enc_len-1), lines)
-
     f.close()
-    return parse_string(lines, filename)
+
+    parse_string(lines, filename)
+
 
 
 def parse_string(string, filename=None):
@@ -131,8 +149,13 @@ def p(filename):
 
 
 def detect_encoding(path):
-    fin = open(path, 'rb')
-    prefix = str(fin.read(80))
+    with open(path, 'rb') as fin:
+        buf = fin.read(80)
+    return detect_text(buf)
+
+
+def detect_text(buf):
+    prefix = str(buf)
     encs = re.findall('#.*coding\s*[:=]\s*([\w\d\-]+)', prefix)
     decl = re.findall('#.*coding\s*[:=]\s*[\w\d\-]+', prefix)
 

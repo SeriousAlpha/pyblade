@@ -37,8 +37,8 @@ from collections import OrderedDict
 
 logger = color_log.init_log(logging.DEBUG)
 # DEBUG INFO WARNING ERROR CRITICAL
-DEBUG = True
-ALERT = False
+DEBUG = False
+ALERT = True
 
 args_ori = set([])
 is_arg_in = False
@@ -58,12 +58,13 @@ CMD_COUNT = 0
 
 class Analyzer(object):
     """judge the injection base on ast"""
-    def __init__(self, filename, check_type):
+    def __init__(self, filename, lines):
         try:
-            self.tree = dump_python.parse_json(filename)
+            self.tree = dump_python.parse_json_text(filename, lines)
         except Exception,e:
             self.tree = "{}"
             print e
+        pass
         self.tree = json.loads(self.tree)
         rec_decrease_tree(self.tree)
         #logger.debug("tree\n%r\n"%(self.tree))
@@ -84,9 +85,9 @@ class Analyzer(object):
         self.func_lines = {}
         self.taint_top = []
         self.taint_func_top = []
-        self.check_type = check_type
-        with open(self.filename, 'r') as fd:
-            self.lines = fd.readlines()
+        #self.check_type = check_type
+#        with open(self.filename, 'r') as fd:
+#            self.lines = fd.readlines()
         self.unsafe_func = set()
         self.untreated_func = set()
         self.record_unsafe_func = OrderedDict({})
@@ -185,7 +186,7 @@ class Analyzer(object):
         self.get_func_lines(func, func_name)
         #logger.debug("func_lines:%r" %(lines))
 #        if analyse_all:
-        look_up_arg(func, args_ori, arg_leafs, func_name, self.import_func, self.check_type.get('verbose'))
+        look_up_arg(func, args_ori, arg_leafs, func_name, self.import_func)
         if func_name == '__init__':
             self.arg.setdefault(class_name, args_ori)
 #        self.record_param.setdefault(func_name, args_ori)
@@ -219,7 +220,7 @@ class Analyzer(object):
 #                if analyse_all:
 #                    look_up_arg(func, args_ori, arg_leafs,func_name)
 #                print "UNTREATED_FUNS", UNTREATED_FUNS
-                if self.check_type.get('cmd') and func_ids and (func_ids & (set(Checklist))) and arg_leafs:
+                if func_ids and (func_ids & (set(Checklist))) and arg_leafs:
                     #print "line221:%s"%func_ids
                     if set(arg_leafs) & set(self.record_param.get(func_name)):
                         #print self.record_param
@@ -250,10 +251,10 @@ class Analyzer(object):
         for key, value in record.iteritems():
             logger.error("File:%s,line:%s,function:%s" %(self.filename, key, '--->'.join(value)))
 
-        if ALERT:
+        if not ALERT:
             for key, value in self.record_unsafe_func.iteritems():
                 logger.error("maybe injected File:%s,    line:%s,    function:%s ---> %s" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
-                print "locate the taint sink function : %s"%( self.lines[key - 1])
+                #print "locate the taint sink function : %s"%( self.lines[key - 1])
 
                 if 'request' in value.get('arg_leafs'):
                     logger.critical("maybe injected File:%s,line:%s,function:%s--->%r" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
@@ -370,22 +371,14 @@ class Analyzer(object):
                                                                     for key, value in self.record_unsafe_func.iteritems():
                                                                         #print key, value
                                                                         if value.get('arg_leafs') == [self.taint_top[-1]]:
-                                                                            ALERT = True
-                                                                        else:
                                                                             ALERT = False
-
-
-
+                                                                        else:
+                                                                            ALERT = True
 
     def source_to_sink(self):
         '''source ->path -> sink'''
-        #self.find_function_def(self.body)
         self.record_taint_source()
-        #logger.debug('record taint source execute!')
-        #self.find_function_expr(self.funcs)
-        #print 'find function expr'
         self.store_sensitive_route()
-        #print 'store sensitive route'
         self.find_taint_func()
 
 #todo: store the sensitive path node
@@ -432,7 +425,6 @@ def check_inner_function(func):
     funcs.setdefault(func_name, var)
     return funcs
 
-'''
 def find_func_leafs(value, args_ori, target_ids, import_func):
     """handle the situation of function"""
     value_arg_ids = []
@@ -455,7 +447,8 @@ def find_func_leafs(value, args_ori, target_ids, import_func):
         elif target_ids:
             args_ori.difference_update(target_ids)
             #logger.warn("In Assign,Call delete (%r) from (%r) where line=(%r)" %(target_ids,args_ori,value.get('lineno')))
-'''
+
+
 def find_arg_leafs(arg, leafs):
     """通过递归找到全所有子节点,历史原因复数格式不修正"""
     fields = arg.get("_fields")
@@ -520,60 +513,7 @@ def find_arg_leafs(arg, leafs):
             find_arg_leafs(arg.get("left"), leafs)
     return
 
-'''
-def is_arg_return(func, args_ori):
-    """
-        判断是否有对arg参数的可控性判断，比如判读是否数字，是否file等
-    """
-    global is_arg_return_op
 
-    if isinstance(func, dict):
-        lines = func.get('body')
-    elif isinstance(func, list):
-        lines = func
-
-    for line in lines:
-        is_return = False
-        is_arg_in = False
-        is_param = False
-        ast_body = line.get('body')
-        ast_orelse = line.get('orelse')
-        ast_handlers = line.get('handlers')
-        if line.get('type') == "If":
-            for body in line.get('body'):
-                if body.get('type') == "Return":
-                    is_return = True
-            test = line.get('test')
-            if line.get('test') and line.get('test').get('type') == "UnaryOp":
-                operand = line.get('test').get('operand')
-                if operand:
-                    args = []
-                    rec_find_args(line.get('test'), args)
-                    if set(args)&set(args_ori):
-                        is_arg_in = True
-            elif test and test.get('type') == 'Compare':
-                args = []
-                for key,value in test.iteritems():
-                    if key == 'left':
-                        if test[key].get('type') == 'Name':
-                            args = [test[key].get('id')]
-                    if key == 'comparators':
-                        for comparator in test[key]:
-                            if comparator.get('type') in ("List", 'Tuple'):
-                                for elt in comparator.get('elts'):
-                                    if elt.get('type') == 'Name':
-                                        is_param = True
-
-                if set(args)&set(args_ori) and not is_param:
-                    is_arg_in = True
-
-            is_arg_return_op = is_return&is_arg_in
-            if is_arg_return_op:#找到即返回
-                #logger.info("is_arg_return:%r" %(line))
-                return
-        if ast_body:
-            is_arg_return(ast_body, args_ori)
-'''
 
 def rec_find_args(operand, args):
     if isinstance(operand, list) or isinstance(operand, tuple):
@@ -591,7 +531,7 @@ def rec_find_args(operand, args):
     else:
         return
 
-'''
+
 def rec_get_attr_top_id(func, parent, ids):
     """
     ids： return the result
@@ -613,7 +553,7 @@ def rec_get_attr_top_id(func, parent, ids):
         parent.update(func)
         rec_get_attr_top_id(func.get('value'), parent, ids)
     return
-'''
+
 
 def rec_get_targets(targets, out_targets):
     """recursive to find the target"""
@@ -630,7 +570,7 @@ def rec_get_targets(targets, out_targets):
                 #logger.debug("Attribute %r" % out_targets)
     return
 
-def look_up_arg(func, args_ori, args, func_name, import_func, verbose):
+def look_up_arg(func, args_ori, args, func_name, import_func):
     """
     recursive to judge the args of unsafe function entrance.
     func : to be tested function
@@ -771,50 +711,30 @@ def usage():
         path即为需要测试的目录路径"""
 
 def main():
-    parser = OptionParser()
-    parser.add_option("-d", "--dir", dest="file_path",help="files to be checked")
-    parser.add_option("-c", "--cmd", action="store_true", dest="cmd_check",help="cmd check", default=True)
-    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",help="print all unsafe func", default=False)
-    (options, args) = parser.parse_args()
-    file_path = options.file_path
-    cmd_check = options.cmd_check
-    verbose = options.verbose
+    files = {
+        u'taintanalysis.py': u'#!env python\r\n#coding = utf-8\r\nimport sys\r\nimport os\r\n\r\ndef list_file(filename):\r\n    cmd = "cat " + filename\r\n    cat = \'list\'\r\n    print cmd\r\n\r\n    def demo(filename):\r\n        cmd = "cat " + filename\r\n        print cmd\r\n        os.system(cmd)\r\n\r\n    demo(cmd)\r\ndef cat_file(filename):\r\n    cmd = "cat " + filename\r\n    print cmd\r\n\r\n    list_file(cmd)\r\n\r\nif __name__ == \'__main__\':\r\n    if len(sys.argv) < 2:\r\n        print "Usage: ./%s filename" % sys.argv[0]\r\n        sys.exit(-1)\r\n\r\n    file = "~/" + sys.argv[1]\r\n    print file\r\n    cat_file(file)\r\n\r\n    sys.exit(0)\r\n\r\n# file -> filename -> cmd -> filename -> cmd -> filename -> cmd  == os.system(cmd)\r\n\r\n# catfile() -> listfile() -> demo()'}
+    scan(files)
 
-    check_type = {'cmd':cmd_check,  'verbose':verbose}
-    if not file_path:
-        usage()
-        sys.exit()
-    else:
-        if (os.path.isfile(file_path) or os.path.isdir(file_path)):
-            files = walk_dir(file_path)
-        else:
-            print "您输入的文件或者路径不存在"
-            sys.exit()
-    for filename in files:
-        #print "filename",filename
-        try:
-            scan(filename, check_type)
-        except Exception, e:
-            print filename
-            traceback.print_exc()
+def scan(files):
+    for name, lines in files.iteritems():
+        judge = Analyzer(name,  lines)
+        judge.parse_py()
+        judge.source_to_sink()
+        judge.record_all_func()
 
-
-def scan(filename):
-    check_type = {'cmd': cmd_check, 'verbose': verbose}
-    judge = Analyzer(filename, check_type)
-    judge.parse_py()
-    judge.source_to_sink()
-    judge.record_all_func()
+    return ALERT
 
 
 if __name__ == "__main__":
-    cfg = cfg_generate.ControlFlowGraph()
-    parent_path = os.path.abspath('..')
-    fn = os.path.join(parent_path, 'tests')
-    filenames = walk_dir(fn)
-    for filename in filenames:
-        pass
+    #cfg = cfg_generate.ControlFlowGraph()
+    #parent_path = os.path.abspath('..')
+    #fn = os.path.join(parent_path, 'tests')
+    #filenames = walk_dir(fn)
+    #for filename in filenames:
+    #    pass
         #s_ast = cfg.parse_file(filename)
         #todo: sys.argv will influence the cfg
     #cfg_generate.PrintCFG(s_ast)
     main()
+
+
