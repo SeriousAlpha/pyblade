@@ -14,6 +14,15 @@ def rec_decrease_tree(tree):
                     for l in tree[key]:
                         rec_decrease_tree(l)
 
+
+def function_summary(obj):
+    if obj.get("type") == "FunctionDef":
+        pass
+        #print obj.get("name")
+
+
+
+
 files = {
     'taintanalysis.py': '#!env python\n#coding = utf-8\nimport sys\nimport os\n\ndef list_file(filename):\n    cmd = "cat " + filename\n    cat = \'list\'\n    print cmd\n\n    def demo(filename):\n        cmd = "cat " + filename\n        print cmd\n        demostate(filename)\n        os.system(filename)\n\n    demo(cmd)\n\ndef demostate(filename):\n    os.system(filename)\n\ndef cat_file(filename):\n    cmd = "cat " + filename\n    print cmd\n\n    list_file(cmd)\n\nif __name__ == \'__main__\':\n    if len(sys.argv) < 2:\n        print "Usage: ./%s filename" % sys.argv[0]\n        sys.exit(-1)\n\n    file = "~/" + sys.argv[1]\n    print file\n    cat_file(file)\n\n    sys.exit(0)\n\n# file -> filename -> cmd -> filename -> cmd -> filename -> cmd  == os.system(cmd)\n\n# catfile() -> listfile() -> demo()'}
 
@@ -27,16 +36,18 @@ for name, lines in files.iteritems():
 #    print key, value
 i = 0
 for obj in body:
-    global i
+    #global i
+    block_type = []
     i = i + 1
     print i
-    print 'execute!'
-    print obj
+    #print 'execute!'
+    function_summary(obj)
     if obj.get("type") == "FunctionDef":
-        pass
-#
-#        for objs,content in obj.iteritems():
-#            print objs,content
+        print set(arg.get('id') for arg in obj.get('args').get('args'))
+        for objs,content in obj.iteritems():
+            print objs,content
+
+
 #print tree
 #print filename,body
 
