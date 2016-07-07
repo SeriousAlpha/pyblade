@@ -23,7 +23,7 @@
 #      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #      MA 02110-1301, USA.
 
-from TaintAnalysers import TaintAnalyzer
+from analyser.TaintAnalysers import TaintAnalyzer
 
 def usage():
     print """用途：本程序主要用于测试py代码中命令注入\n用法：python main.py -d path
@@ -31,7 +31,7 @@ def usage():
 
 def main():
     files = {
-        u'taintanalysis.py': '#!env python\n#coding = utf-8\nimport sys\nimport os\n\ndef list_file(filename):\n    cmd = "cat " + filename\n    cat = \'list\'\n    print cmd\n\n    def demo(filename):\n        cmd = "cat " + filename\n        print cmd\n        demostate(filename)\n        os.system(filename)\n\n    demo(cmd)\n\ndef demostate(filename):\n    os.system(filename)\n\ndef cat_file(filename):\n    cmd = "cat " + filename\n    print cmd\n\n    list_file(cmd)\n\nif __name__ == \'__main__\':\n    if len(sys.argv) < 2:\n        print "Usage: ./%s filename" % sys.argv[0]\n        sys.exit(-1)\n\n    file = "~/" + sys.argv[1]\n    print file\n    cat_file(file)\n\n    sys.exit(0)\n\n# file -> filename -> cmd -> filename -> cmd -> filename -> cmd  == os.system(cmd)\n\n# catfile() -> listfile() -> demo()'}
+        'taintanalysis.py': '#!env python\n#coding = utf-8\nimport sys\nimport os\n\ndef list_file(filename):\n    cmd = "cat " + filename\n    cat = \'list\'\n    print cmd\n\n    def demo(filename):\n        cmd = "cat " + filename\n        print cmd\n        demostate(filename)\n        os.system(filename)\n\n    demo(cmd)\n\ndef demostate(filename):\n    os.system(filename)\n\ndef cat_file(filename):\n    cmd = "cat " + filename\n    print cmd\n\n    list_file(cmd)\n\nif __name__ == \'__main__\':\n    if len(sys.argv) < 2:\n        print "Usage: ./%s filename" % sys.argv[0]\n        sys.exit(-1)\n\n    file = "~/" + sys.argv[1]\n    print file\n    cat_file(file)\n\n    sys.exit(0)\n\n# file -> filename -> cmd -> filename -> cmd -> filename -> cmd  == os.system(cmd)\n\n# catfile() -> listfile() -> demo()'}
     scan(files)
 
 def scan(files):
@@ -40,7 +40,6 @@ def scan(files):
         propagation.parse_py()
         propagation.source_to_sink()
         propagation.record_all_func()
-
 
 if __name__ == "__main__":
 

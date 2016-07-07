@@ -23,17 +23,17 @@
 #      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #      MA 02110-1301, USA.
 
-import dump_python
+from utils import dump_python
 import json
 import logging
-import color_log
+from utils import color_log
 
 from collections import OrderedDict
 
 from conf.sources import SOURCE_LIST
 from conf.sinks import SOURCE
 
-DEBUG = True
+DEBUG = False
 ALERT = True
 
 FILE_UNSAFE_FUNCS = set()
@@ -76,7 +76,6 @@ class TaintAnalyzer(object):
         self.untreated_func = set()
         self.record_unsafe_func = OrderedDict({})
         self.record_other_unsafe_func = OrderedDict({})
-        self.import_module = {}
         self.record_param = {}
         self.arg = {}
         self.taint_var = set()
@@ -551,3 +550,5 @@ def rec_get_attr_top_id(func, parent, ids):
         parent.update(func)
         rec_get_attr_top_id(func.get('value'), parent, ids)
     return
+
+
