@@ -11,9 +11,14 @@ def list_file(filename):
     def demo(filename):
         cmd = "cat " + filename
         print cmd
-        os.system(cmd)
+        demostate(filename)
+        os.system(filename)
 
     demo(cmd)
+
+def demostate(filename):
+    os.system(filename)
+
 def cat_file(filename):
     cmd = "cat " + filename
     print cmd
