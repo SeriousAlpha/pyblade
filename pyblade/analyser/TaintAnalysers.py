@@ -23,10 +23,11 @@
 #      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #      MA 02110-1301, USA.
 
-from utils import dump_python
+
 import json
 import logging
 from utils import color_log
+from utils import dump_python
 
 from collections import OrderedDict
 
@@ -192,6 +193,7 @@ class TaintAnalyzer(object):
                         if not is_arg_return_op and func_name not in ("__init__"):
                             FILE_UNSAFE_FUNCS.add(func_name)
                             self.record_unsafe_func.setdefault(lineno, {'func_name': func_name, 'args': args_ori, 'func_ids': func_ids, 'arg_leafs': arg_leafs})
+                            print self.record_unsafe_func
                             CMD_COUNT = CMD_COUNT + 1
 
     def parse_py(self):
@@ -219,11 +221,6 @@ class TaintAnalyzer(object):
 
                 if 'request' in value.get('arg_leafs'):
                     logger.critical("maybe injected File:%s,line:%s,function:%s--->%r" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
-
-        for key, value in self.record_other_unsafe_func.iteritems():
-            logger.error("File:%s,line:%s,function:%s,dangerous_func:%r" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
-
-            print self.lines[key - 1]
 
     def record_taint_source(self):
         ''' tiant source marked '''

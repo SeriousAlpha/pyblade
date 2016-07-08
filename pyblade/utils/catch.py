@@ -1,6 +1,8 @@
 
 import dump_python
 import json
+from collections import defaultdict
+from collections import OrderedDict
 
 def rec_decrease_tree(tree):
     if isinstance(tree, dict):
@@ -14,17 +16,22 @@ def rec_decrease_tree(tree):
                     for l in tree[key]:
                         rec_decrease_tree(l)
 
-
 def function_summary(obj):
+    function = {}
     if obj.get("type") == "FunctionDef":
-        pass
-        #print obj.get("name")
+        func_name = obj.get('name')
+        for arg in obj.get('args').get('args'):
+            arg_ori = arg.get('id')
+        function.setdefault(func_name, []).append(arg_ori)
+        return function
 
-
+def function_body(func_name):
+    if obj.get("name") == func_name:
+        print obj.get('body')
 
 
 files = {
-    'taintanalysis.py': '#!env python\n#coding = utf-8\nimport sys\nimport os\n\ndef list_file(filename):\n    cmd = "cat " + filename\n    cat = \'list\'\n    print cmd\n\n    def demo(filename):\n        cmd = "cat " + filename\n        print cmd\n        demostate(filename)\n        os.system(filename)\n\n    demo(cmd)\n\ndef demostate(filename):\n    os.system(filename)\n\ndef cat_file(filename):\n    cmd = "cat " + filename\n    print cmd\n\n    list_file(cmd)\n\nif __name__ == \'__main__\':\n    if len(sys.argv) < 2:\n        print "Usage: ./%s filename" % sys.argv[0]\n        sys.exit(-1)\n\n    file = "~/" + sys.argv[1]\n    print file\n    cat_file(file)\n\n    sys.exit(0)\n\n# file -> filename -> cmd -> filename -> cmd -> filename -> cmd  == os.system(cmd)\n\n# catfile() -> listfile() -> demo()'}
+    'taintanalysis.py': '#!env python\n#coding = utf-8\nimport sys\nimport os\n\ndef list_file(filename2):\n    cmd = "cat " + filename2\n    cat = \'list\'\n    print cmd\n\n    def demo(filename4):\n        cmd = "cat " + filename4\n        print cmd\n        demostate(filename4)\n        os.system(filename4)\n\n    demo(cmd)\n\ndef demostate(filename3):\n    os.system(filename3)\n\ndef cat_file(filename1):\n    cmd = "cat " + filename1\n    print cmd\n\n    list_file(cmd)\n\nif __name__ == \'__main__\':\n    if len(sys.argv) < 2:\n        print "Usage: ./%s filename" % sys.argv[0]\n        sys.exit(-1)\n\n    file = "~/" + sys.argv[1]\n    print file\n    cat_file(file)\n\n    sys.exit(0)\n\n# file -> filename -> cmd -> filename -> cmd -> filename -> cmd  == os.system(cmd)\n\n# catfile() -> listfile() -> demo()'}
 
 for name, lines in files.iteritems():
     tree = dump_python.parse_json_text(name, lines)
@@ -34,20 +41,19 @@ for name, lines in files.iteritems():
     body = tree.get("body")
 #for key,value in tree.iteritems():
 #    print key, value
+
+name = OrderedDict({})
 i = 0
 for obj in body:
-    #global i
-    block_type = []
     i = i + 1
     print i
     #print 'execute!'
-    function_summary(obj)
-    if obj.get("type") == "FunctionDef":
-        print set(arg.get('id') for arg in obj.get('args').get('args'))
-        for objs,content in obj.iteritems():
-            print objs,content
+    names = function_summary(obj)
+    print names
 
-
-#print tree
-#print filename,body
+    lineno = obj.get('lineno')
+    print "lineno:%r" %(lineno)
+    for objs, content in obj.iteritems():
+        #pass
+        print objs, content
 
