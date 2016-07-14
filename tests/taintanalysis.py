@@ -3,24 +3,20 @@
 import sys
 import os
 
-def list_file(filename):
-    cmd = "cat " + filename
+def list_file(filename2):
+    cmd = "cat " + filename2
     cat = 'list'
     print cmd
 
-    def demo(filename):
-        cmd = "cat " + filename
+    def demo(filename4):
+        cmd = "cat " + filename4
         print cmd
-        demostate(filename)
-        os.system(filename)
+        os.system(filename4)
 
     demo(cmd)
 
-def demostate(filename):
-    os.system(filename)
-
-def cat_file(filename):
-    cmd = "cat " + filename
+def cat_file(filename1):
+    cmd = "cat " + filename1
     print cmd
 
     list_file(cmd)

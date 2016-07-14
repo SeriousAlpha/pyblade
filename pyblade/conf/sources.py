@@ -2,7 +2,7 @@
 
 
 
-USER_INPUT = ['sys.argv']
+USER_INPUT = ['sys.argv', 'input']
 
 NET_INPUT = ['socket.read']
 

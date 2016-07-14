@@ -1,6 +1,6 @@
 #todo: to make the install setup.py file
 
-from setuptools import setup, find_packages
+from distutils.core import setup
 
 setup(
       name="pyblade",
@@ -10,11 +10,11 @@ setup(
       url="http://http://gitlab.task.ac.cn/vdg/pyblade",
       license="GNU",
       author_email='huangyong@iscas.ac.cn',
-      packages=find_packages('pyblade'),
-      package_dir={'': 'pyblade'},
-      #packages= find_packages(''),
+      packages= ['pyblade','pyblade.analyser','pyblade.conf','pyblade.summary','pyblade.utils'],
+      #package_dir={'pyblade': 'pyblade'},
+      #entry_points={'console_scripts': ['pyblade = pyblade.pyblade:main']},
       #scripts=["scripts/main.py"],
       zip_safe=False,
       platforms="Independant",
+      #py_modules=['pysonar', 'lists']
       )
-
