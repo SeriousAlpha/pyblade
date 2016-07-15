@@ -1,6 +1,7 @@
 
 import dump_python
 import json
+import os
 from collections import defaultdict
 from collections import OrderedDict
 
@@ -16,7 +17,7 @@ def rec_decrease_tree(tree):
                     for l in tree[key]:
                         rec_decrease_tree(l)
 
-def function_summary(obj):
+def get_function_summary(obj):
     function = {}
     if obj.get("type") == "FunctionDef":
         func_name = obj.get('name')
@@ -47,9 +48,15 @@ i = 0
 for obj in body:
     i = i + 1
     print i
-    #print 'execute!'
-    names = function_summary(obj)
+    names = get_function_summary(obj)
     print names
+
+
+parent_path = os.path.abspath('..')
+for keys in files.viewkeys():
+    print keys
+fn = os.path.join(parent_path, keys)
+print fn
 
 #    for objs, content in obj.iteritems():
         #pass

@@ -1,7 +1,6 @@
 # !env python
 # coding=utf-8
 #
-#
 #      main.py
 #
 #      Copyright (C) 2014 - 2015 https://github.com/shengqi158/pyvulhunter is origin
@@ -21,7 +20,7 @@
 #      You should have received a copy of the GNU General Public License
 #      along with this program; if not, write to the Free Software
 #      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-#      MA 02110-1301, USA.s
+#      MA 02110-1301, USA.
 
 from pyblade.analyser.TaintAnalysers import TaintAnalyzer
 
@@ -38,8 +37,10 @@ def scan(files):
     for name, lines in files.iteritems():
         propagation = TaintAnalyzer(name,  lines)
         propagation.parse_py()
-        propagation.source_to_sink()
+        ret = propagation.source_to_sink()
         propagation.record_all_func()
+        print ret
+    return not ret
 
 if __name__ == "__main__":
 

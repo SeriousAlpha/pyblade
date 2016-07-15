@@ -85,7 +85,7 @@ class TaintAnalyzer(object):
     def get_func_objects(self, body, class_name=None):
         """get function structure """
         for obj in body:
-            if obj.get("type") == "FunctionDef":
+            if obj.get('type') == 'FunctionDef':
                 if class_name:
                     key = obj.get('name')+":" + class_name
                 else:
@@ -113,7 +113,7 @@ class TaintAnalyzer(object):
             ast_handlers = line.get('handlers')
             ast_test = line.get('test')
             ast_args = line.get('args')
-            if "value" in line and line.get('value') and "func" in line.get("value"):
+            if 'value' in line and line.get('value') and 'func' in line.get('value'):
                 self.func_lines[func_name].append(line)
                 continue
             elif line.get('type') == 'Call':
@@ -152,7 +152,7 @@ class TaintAnalyzer(object):
         i = i + 1
         is_arg_return_op = False
         arg_leafs = []
-        func_name = func.get("name")
+        func_name = func.get('name')
         args_ori = set([arg.get('id') for arg in func.get('args').get("args")]) #arg.id
         if class_name and self.arg.get(class_name):
             arg_tmp = set(self.arg.get(class_name))
@@ -171,9 +171,9 @@ class TaintAnalyzer(object):
         for line in lines:
             arg_leafs = []
             is_arg_in = False
-            value = line.get("value")
-            lineno = line.get("lineno")
-            if (value and value.get("type") == "Call") or (line and line.get('type') == 'Call'):
+            value = line.get('value')
+            lineno = line.get('lineno')
+            if (value and value.get('type') == 'Call') or (line and line.get('type') == 'Call'):
                 #logger.debug("value:%r" %(value))
                 #line_func = value.get("func") if value else line.get('func')
                 #print value, line
@@ -190,7 +190,7 @@ class TaintAnalyzer(object):
 #                print "UNTREATED_FUNS", UNTREATED_FUNS
                 if func_ids and (func_ids & (set(SOURCE))) and arg_leafs:
                     if set(arg_leafs) & set(self.record_param.get(func_name)):
-                        if not is_arg_return_op and func_name not in ("__init__"):
+                        if not is_arg_return_op and func_name not in ('__init__'):
                             FILE_UNSAFE_FUNCS.add(func_name)
                             self.record_unsafe_func.setdefault(lineno, {'func_name': func_name, 'args': args_ori, 'func_ids': func_ids, 'arg_leafs': arg_leafs})
                             #print self.record_unsafe_func
@@ -227,7 +227,7 @@ class TaintAnalyzer(object):
         valset = []
         if 'sys.argv' in SOURCE_LIST:
             for obj in self.body:
-                if obj.get("type") == "If":
+                if obj.get('type') == 'If':
                     value = obj.get('body')
                     for val in value:
                         if val.get('type') == 'Assign':
@@ -253,7 +253,7 @@ class TaintAnalyzer(object):
 
     def find_function_def(self, body):
         for obj in body:
-            if obj.get("type") == "FunctionDef":
+            if obj.get('type') == 'FunctionDef':
                 key = obj.get('name') + ":"
                 #todo: improve the recursion
                 self.find_function_def(obj.get('body'))
@@ -270,29 +270,29 @@ class TaintAnalyzer(object):
     def store_sensitive_route(self):
         '''to record the taint route'''
         for expr in self.body:
-            if expr.get("type") == "If":
-                for str in expr.get("body"):
-                    if str.get("type") == "Expr" and str.get("value").get("type") == "Call":
-                        for args in str.get("value").get("args"):
-                            if args.get("id") == self.taint_var:
-                                self.taint_func = str.get("value").get("func").get("id")
+            if expr.get('type') == 'If':
+                for str in expr.get('body'):
+                    if str.get('type') == 'Expr' and str.get('value').get('type') == 'Call':
+                        for args in str.get('value').get('args'):
+                            if args.get('id') == self.taint_var:
+                                self.taint_func = str.get('value').get('func').get('id')
                                 self.taint_func_top = [self.taint_func]    #store catfile
 
     def find_taint_func(self):
         global ALERT
         for func in self.body:
-            if func.get("type") == "FunctionDef" and func.get("name") == self.taint_func:
+            if func.get('type') == 'FunctionDef' and func.get('name') == self.taint_func:
                 var = get_function_args(func)
                 self.taint_top.append(var)
                 taint_dests = get_assign_target(func, var)
                 self.taint_top.append(taint_dests)
-                for body in func.get("body"):
-                    if body.get("type") == "Expr" and body.get("value").get("type") == "Call":
+                for body in func.get('body'):
+                    if body.get('type') == 'Expr' and body.get('value').get('type') == 'Call':
                         self.taint_func_top.append(body.get('value').get('func').get('id'))
-                        for dest in body.get("value").get("args"):
-                            if self.taint_top[-1] == dest.get("id"):     # cmd = "cat " + filename  -> lineno:21 list_file(cmd)
+                        for dest in body.get('value').get('args'):
+                            if self.taint_top[-1] == dest.get('id'):     # cmd = "cat " + filename  -> lineno:21 list_file(cmd)
                                 for funcs in self.body:
-                                    if funcs.get("type") == "FunctionDef" and funcs.get("name") == self.taint_func_top[-1]:
+                                    if funcs.get('type') == 'FunctionDef' and funcs.get('name') == self.taint_func_top[-1]:
                                         vars = get_function_args(funcs)
                                         self.taint_top.append(vars)     #list_file(filename)
                                         target = get_assign_target(funcs, vars)
@@ -300,32 +300,39 @@ class TaintAnalyzer(object):
                                         inner_func = check_inner_function(funcs)
                                         for keys, values in inner_func.iteritems():
                                             self.taint_func_top.append(keys)  # demo(filename) inner
+                                        new_taint = get_expr_id(funcs, self.taint_func_top[-1], self.taint_top[-1], inner_func, keys)
+                                        self.taint_top.append(new_taint)
                                         print self.taint_func_top
-                                        for funcs_ in funcs.get('body'):
-                                            if funcs_.get('type') == 'Expr' and funcs_.get('value').get('type') == 'Call':
-                                                for args in funcs_.get('value').get('args'):
-                                                    if args.get('id') == self.taint_top[-1]:
-                                                        if funcs_.get('value').get('func').get('id') == self.taint_func_top[-1]:
-                                                            self.taint_top.append(values)
 
-        assigned = get_func_body(self.tree, self.taint_func_top[1], self.taint_top[-1])
-        self.taint_top.append(assigned)
-        for key, value in self.record_unsafe_func.iteritems():
-            print self.taint_top
-            if value.get('arg_leafs') == [self.taint_top[-1]]:
-                ALERT = False
-            else:
-                ALERT = True
+                                        assigned = get_func_body(self.tree, self.taint_func_top[1], self.taint_top[-1])
+                                        self.taint_top.append(assigned)
+                                        for key, value in self.record_unsafe_func.iteritems():
+                                            print self.taint_top
+                                            if value.get('arg_leafs') == [self.taint_top[-1]]:
+                                                ALERT = False
+                                            else:
+                                                ALERT = True
+        return ALERT
 
     def source_to_sink(self):
         '''source ->path -> sink'''
         self.record_taint_source()
         self.store_sensitive_route()
-        self.find_taint_func()
+        ret = self.find_taint_func()
+        return ret
+
+def get_expr_id(funcs, taint_func, taint_var, inner_func, key):
+    for funcs_ in funcs.get('body'):
+        if funcs_.get('type') == 'Expr' and funcs_.get('value').get('type') == 'Call':
+            for args in funcs_.get('value').get('args'):
+                if args.get('id') == taint_var:
+                    if funcs_.get('value').get('func').get('id') == taint_func:
+                        value = inner_func.get(key)
+    return value
 
 def get_func_body(func, taint_func, taint_var):
     for body in func.get('body'):
-        if body.get("type") == "FunctionDef" and body.get("name") == taint_func:
+        if body.get('type') == 'FunctionDef' and body.get('name') == taint_func:
             for bodys in body.get('body'):
                 if bodys.get('type') == 'FunctionDef':
                     for indexs in bodys.get('body'):
@@ -339,13 +346,13 @@ def get_func_body(func, taint_func, taint_var):
 def get_assign_target(func, taint):
     target_ = 'none'
     for body in func.get('body'):
-        if body.get("type") == "Assign":
+        if body.get('type') == 'Assign':
             ops = body.get('value')
-            if "right" in ops:
-                ops_ = ops.get("right")
-                if ops_.get("id") == taint:
-                    for ids in body.get("targets"):
-                        target_ = ids.get("id")
+            if 'right' in ops:
+                ops_ = ops.get('right')
+                if ops_.get('id') == taint:
+                    for ids in body.get('targets'):
+                        target_ = ids.get('id')
     return target_
 
 def check_inner_function(func):
@@ -372,7 +379,7 @@ def rec_decrease_tree(tree):
                         rec_decrease_tree(l)
 
 def rec_get_func_ids(func, func_ids):
-    if func.get('type') in ("Name","Attribute"):
+    if func.get('type') in ('Name','Attribute'):
         get_func_id(func, func_ids)
     if 'value' in func and func.get('value').get('func'):
         rec_get_func_ids(func.get('value').get('func'), func_ids)
@@ -397,7 +404,7 @@ def rec_get_targets(targets, out_targets):
 
 def get_func_id(func, func_ids):
     """get function name """
-    if func.get("type") == "Name":
+    if func.get('type') == 'Name':
         func_id = func.get('id')
     elif func.get('type') == 'Attribute':
         if func.get('value').get('type') == 'Name':
@@ -451,9 +458,9 @@ def find_func_leafs(value, args_ori, target_ids, import_func):
 
 def find_arg_leafs(arg, leafs):
     """recursive to find all leafs"""
-    fields = arg.get("_fields")
+    fields = arg.get('_fields')
     _type = arg.get('type')
-    if _type == "Attribute":
+    if _type == 'Attribute':
         parent, topids = {}, []
         rec_get_attr_top_id(arg, parent, topids)
         #logger.warning("parent:%r,topids:%r" %(parent, topids))
@@ -466,7 +473,7 @@ def find_arg_leafs(arg, leafs):
             leafs.append(topids[0])
             #logger.warn("2parent:%r,topids:%r" %(parent, topids))
         #find_arg_leafs(arg.get('value'), leafs)
-    if _type == "Name":
+    if _type == 'Name':
         leafs.append(arg.get('id'))
     if _type == 'Call':
         func_ids = []
@@ -493,9 +500,9 @@ def find_arg_leafs(arg, leafs):
             find_arg_leafs(arg.get('func'), leafs)
     if _type == 'Subscript':
         find_arg_leafs(arg.get('value'), leafs)
-    if _type == "BinOp" and fields:
-        if "right" in fields:
-            if arg.get('right').get('type') == "Name":
+    if _type == 'BinOp' and fields:
+        if 'right' in fields:
+            if arg.get('right').get('type') == 'Name':
                 right_id = arg.get("right").get("id")
                 if right_id:
                     leafs.append(right_id)
@@ -505,12 +512,12 @@ def find_arg_leafs(arg, leafs):
             elif arg.get('right').get('type') == 'Call':
                 find_arg_leafs(arg.get('right'), leafs)
 
-        if "left" in fields and not arg.get("left").get("_fields"):
+        if 'left' in fields and not arg.get('left').get('_fields'):
             left_id = arg.get('left').get('id')
             if left_id:
                 leafs.append(left_id)
-        if "left" in fields and arg.get("left").get("_fields"):
-            find_arg_leafs(arg.get("left"), leafs)
+        if 'left' in fields and arg.get('left').get('_fields'):
+            find_arg_leafs(arg.get('left'), leafs)
     return
 
 def rec_find_args(operand, args):
@@ -518,9 +525,9 @@ def rec_find_args(operand, args):
         find_all_leafs(operand, args)
     elif isinstance(operand, dict):
         if operand.get('type') == 'Call':
-            if "args" in operand:
+            if 'args' in operand:
                 find_all_leafs(operand.get('args'), args)
-            if "value" in operand.get('func'):
+            if 'value' in operand.get('func'):
                 rec_find_args(operand.get('func').get('value'), args)
         elif operand.get('type') == 'UnaryOp':
             rec_find_args(operand.get('operand'), args)
