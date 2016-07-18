@@ -215,7 +215,7 @@ class TaintAnalyzer(object):
         for key, value in record.iteritems():
             logger.error("File:%s,line:%s,function:%s" %(self.filename, key, '--->'.join(value)))
 
-        if ALERT:
+        if not ALERT:
             for key, value in self.record_unsafe_func.iteritems():
                 logger.error("maybe injected File:%s,    line:%s,    function:%s ---> %s" %(self.filename, key, value.get('func_name'), value.get('func_ids')))
 
@@ -255,7 +255,6 @@ class TaintAnalyzer(object):
         for obj in body:
             if obj.get('type') == 'FunctionDef':
                 key = obj.get('name') + ":"
-                #todo: improve the recursion
                 self.find_function_def(obj.get('body'))
                 self.funcs.setdefault(key, obj)
                 print key, obj
@@ -306,9 +305,9 @@ class TaintAnalyzer(object):
 
                                         assigned = get_func_body(self.tree, self.taint_func_top[1], self.taint_top[-1])
                                         self.taint_top.append(assigned)
+                                        print self.taint_top
                                         for key, value in self.record_unsafe_func.iteritems():
-                                            print self.taint_top
-                                            if value.get('arg_leafs') == [self.taint_top[-1]]:
+                                            if value.get('arg_leafs') == [self.taint_top[-2]]:
                                                 ALERT = False
                                             else:
                                                 ALERT = True

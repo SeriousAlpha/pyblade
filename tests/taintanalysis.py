@@ -15,6 +15,9 @@ def list_file(filename2):
 
     demo(cmd)
 
+def demostate(filename3):
+    os.system(filename3)
+
 def cat_file(filename1):
     cmd = "cat " + filename1
     print cmd
