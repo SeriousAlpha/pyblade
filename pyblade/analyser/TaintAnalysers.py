@@ -23,7 +23,6 @@
 #      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #      MA 02110-1301, USA.
 
-
 import json
 import logging
 from pyblade.utils import color_log
@@ -92,13 +91,13 @@ class TaintAnalyzer(object):
                     key = obj.get('name')+":"
                 self.get_func_objects(obj.get('body'), obj.get('name'))
                 self.func.setdefault(key, obj)
-                #print self.func
             elif obj.get('type') == 'ClassDef':
                 self.get_func_objects(obj.get('body'), obj.get('name'))
         return
 
     def get_func_lines(self, func, func_name):
         """ get the line of the function"""
+        #logger.warning('%r,%r', func, func_name)
         if isinstance(func, dict) and 'body' in func:
             lines = func.get('body')
         elif isinstance(func, list):
@@ -158,16 +157,12 @@ class TaintAnalyzer(object):
             arg_tmp = set(self.arg.get(class_name))
             args_ori = args_ori | arg_tmp
         self.func_lines.setdefault(func_name, [])
-        #print i, self.func_lines
         self.get_func_lines(func, func_name)
-        #print self.get_func_lines(func, func_name)
         if func_name == '__init__':
             self.arg.setdefault(class_name, args_ori)
         self.record_param[func_name] = args_ori # ??????
         #print 'func,record_param,i:', func_name,self.record_param.get(func_name),i
         lines = self.func_lines[func_name]
-        #print lines
-        #analysis all function statements
         for line in lines:
             arg_leafs = []
             is_arg_in = False
@@ -176,24 +171,19 @@ class TaintAnalyzer(object):
             if (value and value.get('type') == 'Call') or (line and line.get('type') == 'Call'):
                 #logger.debug("value:%r" %(value))
                 #line_func = value.get("func") if value else line.get('func')
-                #print value, line
                 line_func = value if value and value.get('type') == 'Call' else line
                 #value_args = value.get('args') if value else line.get('args')
                 value = value if value else line
                 func_ids = []
                 rec_get_func_ids(line_func, func_ids)
                 func_ids = set(func_ids)
-                rec_find_args(value, arg_leafs)
+                find_args(value, arg_leafs)
 
-#                if analyse_all:
-#                    look_up_arg(func, args_ori, arg_leafs,func_name)
-#                print "UNTREATED_FUNS", UNTREATED_FUNS
                 if func_ids and (func_ids & (set(SOURCE))) and arg_leafs:
                     if set(arg_leafs) & set(self.record_param.get(func_name)):
                         if not is_arg_return_op and func_name not in ('__init__'):
                             FILE_UNSAFE_FUNCS.add(func_name)
                             self.record_unsafe_func.setdefault(lineno, {'func_name': func_name, 'args': args_ori, 'func_ids': func_ids, 'arg_leafs': arg_leafs})
-                            #print self.record_unsafe_func
                             CMD_COUNT = CMD_COUNT + 1
 
     def parse_py(self):
@@ -423,47 +413,42 @@ def get_func_id(func, func_ids):
     if func_id:
         func_ids.append(func_id)
 
-def find_all_leafs(args, leafs):
-
-    for arg in args:
-        find_arg_leafs(arg, leafs)
-
 def get_function_args(func):
     for args in func.get('args').get('args'):
         var = args.get('id')
     return var
 
-def find_func_leafs(value, args_ori, target_ids, import_func):
-    """handle the situation of function"""
-    value_arg_ids = []
-    rec_find_args(value, value_arg_ids)
-    value_func_ids = []
-    rec_get_func_ids(value.get('func'), value_func_ids)
-    value_func_ids = set(value_func_ids)
-    value_func_type = value.get('func').get('type')
-    value_func = value.get('func')
-    (topids, parent) = ([], {})
-    rec_get_attr_top_id(value_func, parent, topids)
+def find_args(operand, args):
+    #logger.warning('%r, %r', operand, args)
+    if isinstance(operand, list) or isinstance(operand, tuple):
+        find_all_leafs(operand, args)
+    elif isinstance(operand, dict):
+        if operand.get('type') == 'Call':
+            if 'args' in operand:
+                find_all_leafs(operand.get('args'), args)
+            if 'value' in operand.get('func'):
+                find_args(operand.get('func').get('value'), args)
+        elif operand.get('type') == 'UnaryOp':
+            find_args(operand.get('operand'), args)
+        elif operand.get('type') == 'BinOp':
+            find_arg_leafs(operand, args)
+    else:
+        return
 
-    if value_arg_ids or topids:
-        #handle the method
-        if value_func_type == 'Name' and (set(value_arg_ids)& args_ori):
-            for func_id in set(import_func.keys())& value_func_ids:
-                value_func_ids.add(import_func.get(func_id))
-                value_func_ids.remove(func_id)
-
-        elif target_ids:
-            args_ori.difference_update(target_ids)
+def find_all_leafs(args, leafs):
+    for arg in args:
+        find_arg_leafs(arg, leafs)
 
 def find_arg_leafs(arg, leafs):
     """recursive to find all leafs"""
     fields = arg.get('_fields')
+    #logger.warn('entry into find_arg_leafs: %r, %r', arg, leafs)
     _type = arg.get('type')
     if _type == 'Attribute':
         parent, topids = {}, []
         rec_get_attr_top_id(arg, parent, topids)
         #logger.warning("parent:%r,topids:%r" %(parent, topids))
-        if topids and 'self' in topids[0].lower() :
+        if topids and 'self' in topids[0].lower():
             leafs.append(topids[0])
         elif topids and topids[0].lower() != 'request' and topids[0].lower() != 'self':
             leafs.append(topids[0])
@@ -477,21 +462,21 @@ def find_arg_leafs(arg, leafs):
     if _type == 'Call':
         func_ids = []
         rec_get_func_ids(arg.get('func'), func_ids)
-        #logger.info('func_ids:%r,funcs:%r' %(func_ids,set(Checklist)|set(FILE_UNSAFE_FUNCS)))
+        logger.info('func_ids:%r,funcs:%r' %(func_ids,set(SOURCE)|set(FILE_UNSAFE_FUNCS)))
         if set(func_ids)&(set(SOURCE)|set(FILE_UNSAFE_FUNCS)):
             for value in arg.get('args'):
                 parent, topids = {}, []
                 rec_get_attr_top_id(value, parent, topids)
-                #logger.warn("parent:%r,topids:%r" %(parent, topids))
-                #logger.warn("value:%r," %(value))
+                logger.warn("parent:%r,topids:%r" %(parent, topids))
+                logger.warn("value:%r," %(value))
                 if topids and 'self' in topids[0].lower() :
                     leafs.append(topids[0])
                 elif topids and topids[0].lower() != 'request' and topids[0].lower() != 'self':
                     leafs.append(topids[0])
-                    #logger.warn("1parent:%r,topids:%r" %(parent, topids))
+                    logger.warn("1parent:%r,topids:%r" %(parent, topids))
                 elif topids and parent and parent.get('type')=='Attribute' and parent.get('attr') in REQUEST_VAR:
                     leafs.append(topids[0])
-                    #logger.warn("2parent:%r,topids:%r" %(parent, topids))
+                    logger.warn("2parent:%r,topids:%r" %(parent, topids))
 
             for arg_item in arg.get('args'):
                 find_arg_leafs(arg_item, leafs)
@@ -518,22 +503,6 @@ def find_arg_leafs(arg, leafs):
         if 'left' in fields and arg.get('left').get('_fields'):
             find_arg_leafs(arg.get('left'), leafs)
     return
-
-def rec_find_args(operand, args):
-    if isinstance(operand, list) or isinstance(operand, tuple):
-        find_all_leafs(operand, args)
-    elif isinstance(operand, dict):
-        if operand.get('type') == 'Call':
-            if 'args' in operand:
-                find_all_leafs(operand.get('args'), args)
-            if 'value' in operand.get('func'):
-                rec_find_args(operand.get('func').get('value'), args)
-        elif operand.get('type') == 'UnaryOp':
-            rec_find_args(operand.get('operand'), args)
-        elif operand.get('type') == 'BinOp':
-            find_arg_leafs(operand, args)
-    else:
-        return
 
 def rec_get_attr_top_id(func, parent, ids):
     """
