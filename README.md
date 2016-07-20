@@ -16,10 +16,16 @@
 
 ### 用法：
 ----
-1. 在Python 命令行模式下，输入python main.py -d *path*\test  path为当前绝对目录
-2. 在eclipse+pydev环境下，run->run configurations->Arguments 填入-d *path*\test path为当前绝对目录
-3. 在pycharm环境下，在run->debug configurations->script parameters填入-d *path*\test path为当前绝对目录     
-在集成开发环境下，run一下main.py文件
+解压安装压缩包，进入源代码主目录，使用python setup.py install命令进行安装。
+代码示例：
+```python
+from pyblade import scan
+
+files = {
+           'taintanalysis.py': 'os.system('cmd')\n\n' }
+
+scan(files)
+```
 
 ### 文件说明：
 -----
