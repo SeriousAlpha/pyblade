@@ -1,7 +1,4 @@
 
-
-
-
 USER_INPUT = ['sys.argv', 'input', 'raw_input']
 
 NET_INPUT = ['socket.read']

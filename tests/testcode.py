@@ -6,7 +6,3 @@ from pyblade import scan
 
 res = scan(files)
 print res
-
-#from psydiff import
-
-# The difference between nodes are stored as a Change structure.

@@ -26,17 +26,8 @@ files = {
 
 scan(files)
 ```
-files是待检测的代码生成的字典。
-解压安装压缩包，进入源代码主目录，使用python setup.py install命令进行安装。
-代码示例：
-```python
-from pyblade import scan
+files是待检测的代码生成的字典。生成的具体方法参见tests目录下的readme
 
-files = {
-           'taintanalysis.py': 'os.system('cmd')\n\n' }
-
-scan(files)
-```
 
 ### 文件说明：
 -----
