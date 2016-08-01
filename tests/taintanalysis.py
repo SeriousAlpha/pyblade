@@ -11,9 +11,8 @@ def list_file(filename2):
     def demo(filename4):
         cmd = "cat " + filename4
         print cmd
-        for i in range(3):
-            os.system('cat')
-        demo(cmd)
+
+        os.system('cat')
 
     demo(cmd)
 
@@ -24,7 +23,6 @@ def cat_file(filename1):
     cmd = "cat " + filename1
     print cmd
     os.system(filename1)
-    eval(filename1)
     list_file(cmd)
 
 if __name__ == '__main__':

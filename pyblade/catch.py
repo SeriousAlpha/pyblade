@@ -1,11 +1,10 @@
 
-import dump_python
+import utils.dump_python
 import json
 import os
 import dis
 import sys
 
-from collections import defaultdict
 from collections import OrderedDict
 
 def rec_decrease_tree(tree):
@@ -34,16 +33,21 @@ def function_body(func_name):
     if obj.get("name") == func_name:
         print obj.get('body')
 
-print 'lineno34', function_body.func_code.co_names
-print 'lineno35', function_body.func_code.co_varnames
-print dis.dis(function_body)
+#print 'lineno34', function_body.func_code.co_names
+#print 'lineno35', function_body.func_code.co_varnames
+#print dis.dis(function_body)
 
+dir = os.path.abspath('..')
+print dir
+file = os.path.join(dir, 'tests\\taintanalysis.py')
+fd = open(file, 'r+')
+strings = fd.read()
 
 files = {
-    'taintanalysis.py': '#!env python\n#coding = utf-8\nimport sys\nimport os\n\ndef list_file(filename2):\n    cmd = "cat " + filename2\n    cat = \'list\'\n    print cmd\n\n    def demo(filename4):\n        cmd = "cat " + filename4\n        print cmd\n        demostate(filename4)\n        os.system(filename4)\n\n    demo(cmd)\n\ndef demostate(filename3):\n    os.system(filename3)\n\ndef cat_file(filename1):\n    cmd = "cat " + filename1\n    print cmd\n\n    list_file(cmd)\n\nif __name__ == \'__main__\':\n    if len(sys.argv) < 2:\n        print "Usage: ./%s filename" % sys.argv[0]\n        sys.exit(-1)\n\n    file = "~/" + sys.argv[1]\n    print file\n    cat_file(file)\n\n    sys.exit(0)\n\n# file -> filename -> cmd -> filename -> cmd -> filename -> cmd  == os.system(cmd)\n\n# catfile() -> listfile() -> demo()'}
+    'taintanalysis.py': strings}
 
 for name, lines in files.iteritems():
-    tree = dump_python.parse_json_text(name, lines)
+    tree = utils.dump_python.parse_json_text(name, lines)
     tree = json.loads(tree)
     rec_decrease_tree(tree)
     filename = tree.get("filename")
@@ -69,13 +73,3 @@ print fn
         #pass
 #        print objs, content
 
-def import_mod_from_dir(name, directory):
-    save = sys.path[:]
-    sys.path.insert(0, directory)
-    module = __import__(name)
-    sys.path[:] = save
-    return module
-foo1 = import_mod_from_dir('color_log', ' ')
-foo2 = import_mod_from_dir('color_log', ' ')
-print foo1
-print foo2

@@ -144,4 +144,4 @@ ENV/
 # Rope project settings
 .ropeproject
 /MANIFEST
-*.json
+*.py.json

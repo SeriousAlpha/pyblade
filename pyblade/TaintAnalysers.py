@@ -25,15 +25,16 @@
 
 import json
 import logging
-from pyblade.utils import color_log
-from pyblade.utils import dump_python
+import os
+from utils import color_log
+from utils import dump_python
 
 from collections import OrderedDict
 
-from pyblade.conf.sources import SOURCE_LIST
-from pyblade.conf.sinks import SOURCE
+from conf.sources import SOURCE_LIST
+from conf.sinks import SOURCE
 
-DEBUG = False
+DEBUG = True
 ALERT = True
 
 FILE_UNSAFE_FUNCS = set()
@@ -42,7 +43,7 @@ CMD_COUNT = 0
 #args_ori = set([])
 is_arg_in = False
 is_arg_return_op = False
-i = 0
+
 
 logger = color_log.init_log(logging.DEBUG)
 # DEBUG INFO WARNING ERROR CRITICAL
@@ -57,9 +58,11 @@ class TaintAnalyzer(object):
             print e
         self.tree = json.loads(self.tree)
         rec_decrease_tree(self.tree)
+        dir = os.path.abspath('.')
+        files = os.path.join(dir, 'tests\\sample2.py')
         if DEBUG:
             try:
-                fd = open(filename+".json", 'w')
+                fd = open(files+".json", 'w')
                 json.dump(self.tree, fd)
                 fd.flush()
                 fd.close()
@@ -147,8 +150,6 @@ class TaintAnalyzer(object):
         global is_arg_in
         global CMD_COUNT
         global is_arg_return_op
-        global i
-        i = i + 1
         is_arg_return_op = False
         arg_leafs = []
         func_name = func.get('name')
@@ -462,7 +463,7 @@ def find_arg_leafs(arg, leafs):
     if _type == 'Call':
         func_ids = []
         rec_get_func_ids(arg.get('func'), func_ids)
-        logger.info('func_ids:%r,funcs:%r' %(func_ids,set(SOURCE)|set(FILE_UNSAFE_FUNCS)))
+        logger.info('func_ids:%r,funcs:%r' %(func_ids,set(SOURCE)))
         if set(func_ids)&(set(SOURCE)|set(FILE_UNSAFE_FUNCS)):
             for value in arg.get('args'):
                 parent, topids = {}, []
@@ -525,5 +526,4 @@ def rec_get_attr_top_id(func, parent, ids):
         parent.update(func)
         rec_get_attr_top_id(func.get('value'), parent, ids)
     return
-
 

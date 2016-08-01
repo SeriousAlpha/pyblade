@@ -22,7 +22,7 @@
 #      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #      MA 02110-1301, USA.
 
-from pyblade.analyser.TaintAnalysers import TaintAnalyzer
+from TaintAnalysers import TaintAnalyzer
 
 def usage():
     print """用途：本程序主要用于测试py代码中命令注入\n用法：python main.py -d path

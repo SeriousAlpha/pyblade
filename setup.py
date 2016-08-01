@@ -11,9 +11,9 @@ setup(
       author_email='huangyong@iscas.ac.cn',
       packages= ['pyblade.analyser', 'pyblade.conf', 'pyblade.summary', 'pyblade.utils', 'pyblade.traversers'],  #find packages
       #package_dir={'pyblade': 'pyblade'},
-      #entry_points={'console_scripts': ['pyblade = pyblade.pyblade:main']},
+      #entry_points={'console_scripts': ['pyblade = pyblade:scan']},
       #scripts=["scripts/main.py"],
       platforms="Independant",
-      py_modules=['pyblade.cfg_generate']  #listing individual modules
-      )
+      py_modules=['pyblade.cfg_generate'],  #listing individual modules
+)
 
