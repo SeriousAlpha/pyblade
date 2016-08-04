@@ -1,4 +1,6 @@
-
+# !env python
+# coding=utf-8
+#
 import utils.dump_python
 import json
 import os
@@ -29,17 +31,13 @@ def get_function_summary(obj):
         function.setdefault(lineno, []).append(arg_ori)
         return function
 
-def function_body(func_name):
-    if obj.get("name") == func_name:
-        print obj.get('body')
 
 #print 'lineno34', function_body.func_code.co_names
 #print 'lineno35', function_body.func_code.co_varnames
 #print dis.dis(function_body)
 
 dir = os.path.abspath('..')
-print dir
-file = os.path.join(dir, 'tests\\taintanalysis.py')
+file = os.path.join(dir, 'tests\\sample2.py')
 fd = open(file, 'r+')
 strings = fd.read()
 
@@ -52,24 +50,25 @@ for name, lines in files.iteritems():
     rec_decrease_tree(tree)
     filename = tree.get("filename")
     body = tree.get("body")
-#for key,value in tree.iteritems():
-#    print key, value
+    print body
+for key, value in tree.iteritems():
+    print key, value
 
 name = OrderedDict({})
 i = 0
-for obj in body:
-    i = i + 1
-    print i
-    names = get_function_summary(obj)
-    print names
+#for obj in body:
+    #i = i + 1
+    #print i
+    #names = get_function_summary(obj)
+    #print names
 
 parent_path = os.path.abspath('..')
 for keys in files.viewkeys():
     print keys
-fn = os.path.join(parent_path, keys)
-print fn
 
-#    for objs, content in obj.iteritems():
-        #pass
-#        print objs, content
+#fn = os.path.join(parent_path, keys)
+#print fn
+
+#for objs, content in obj.iteritems():
+#    print objs, content
 

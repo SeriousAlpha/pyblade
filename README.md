@@ -17,7 +17,7 @@
 
 ### 用法：
 ----
-    解压安装压缩包，进入源代码主目录，使用python setup.py install命令进行安装。
+解压安装压缩包，进入源代码主目录，使用python setup.py install命令进行安装。
 代码示例：
 ```python
 from pyblade import scan
@@ -27,7 +27,7 @@ files = {
 
 scan(files)
 ```
-    files是待检测的代码生成的字典。生成的具体方法参见tests目录下的readme
+files是待检测的代码生成的字典。生成的具体方法参见tests目录下的readme
 
 
 ### 文件说明：

@@ -9,7 +9,9 @@ env:
   - TOXENV=py33
   - TOXENV=py34
 
-install: pip install tox
+install:
+    - "pip install -r requirements.txt --use-mirrors"
+    - "pip install tox"
 
 script: tox
 
