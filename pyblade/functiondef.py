@@ -50,13 +50,15 @@ def get_tree(file):
     return tree
 
 
-def find_function(content, class_name=None):
+def find_function(content, func_tree, path):
     for body in content:
         if body.get('type') == 'FunctionDef':
             key = body.get('name')
             lineno = body.get('lineno')
-            logger.warning('%s,%s', key, lineno)
-            find_function(body.get('body'))
+            newpath = path[:]
+            newpath.append(key)
+            add(func_tree, newpath)
+            find_function(body.get('body'), func_tree, newpath)
 
 
 def list_import(content):
@@ -88,9 +90,10 @@ def main():
     parent_path = os.path.abspath('..')
     fn = os.path.join(parent_path, 'tests', filename)
     body = trees.get('body')
-    find_function(body)
-    #list_import(body)
-
+    func_tree = tree()
+    find_function(body, func_tree, ['root'])
+    pp = pprint.PrettyPrinter(depth=10)
+    pp.pprint(dicts(func_tree))
 
 
 if __name__ == "__main__":
