@@ -15,7 +15,15 @@ def test(num):
         func = _get_func()
         func(arg)
 
+    def func4():
+        pass
+        def func5():
+            pass
+    func4()
+    func2()
     if 1 == num:
+        def func3():
+            pass
         return func1
     elif 2 == num:
         return func2

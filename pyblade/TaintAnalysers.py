@@ -40,7 +40,6 @@ ALERT = True
 FILE_UNSAFE_FUNCS = set()
 CMD_COUNT = 0
 
-#args_ori = set([])
 is_arg_in = False
 is_arg_return_op = False
 
@@ -250,13 +249,6 @@ class TaintAnalyzer(object):
                 self.funcs.setdefault(key, obj)
                 print key, obj
 
-    #todo: do handle recursion
-
-    '''def find_args_leafs(self, args):
-        for arg in args:
-            self.find_args_leafs(arg)
-            print arg'''
-
     def store_sensitive_route(self):
         '''to record the taint route'''
         for expr in self.body:
@@ -311,6 +303,7 @@ class TaintAnalyzer(object):
         ret = self.find_taint_func()
         return ret
 
+
 def get_expr_id(funcs, taint_func, taint_var, inner_func, key):
     for funcs_ in funcs.get('body'):
         if funcs_.get('type') == 'Expr' and funcs_.get('value').get('type') == 'Call':
@@ -319,6 +312,7 @@ def get_expr_id(funcs, taint_func, taint_var, inner_func, key):
                     if funcs_.get('value').get('func').get('id') == taint_func:
                         value = inner_func.get(key)
     return value
+
 
 def get_func_body(func, taint_func, taint_var):
     for body in func.get('body'):
@@ -333,6 +327,7 @@ def get_func_body(func, taint_func, taint_var):
                                     for ids in indexs.get('targets'):
                                         return ids.get('id')
 
+
 def get_assign_target(func, taint):
     target_ = 'none'
     for body in func.get('body'):
@@ -345,6 +340,7 @@ def get_assign_target(func, taint):
                         target_ = ids.get('id')
     return target_
 
+
 def check_inner_function(func):
     funcs = {}
     for fun in func.get('body'):
@@ -355,6 +351,7 @@ def check_inner_function(func):
             pass
     funcs.setdefault(func_name, var)
     return funcs
+
 
 def rec_decrease_tree(tree):
     if isinstance(tree, dict):
@@ -368,6 +365,7 @@ def rec_decrease_tree(tree):
                     for l in tree[key]:
                         rec_decrease_tree(l)
 
+
 def rec_get_func_ids(func, func_ids):
     if func.get('type') in ('Name','Attribute'):
         get_func_id(func, func_ids)
@@ -380,6 +378,7 @@ def rec_get_func_ids(func, func_ids):
                 rec_get_func_ids(args, func_ids)
     return
 
+
 def rec_get_targets(targets, out_targets):
     """recursive to find the target"""
     for target in targets:
@@ -391,6 +390,7 @@ def rec_get_targets(targets, out_targets):
             if target.get('value').get('type') == 'Name' and target.get('value').get('id') == 'self':
                 out_targets.append('self.'+target.get('attr'))
     return
+
 
 def get_func_id(func, func_ids):
     """get function name """
@@ -414,10 +414,12 @@ def get_func_id(func, func_ids):
     if func_id:
         func_ids.append(func_id)
 
+
 def get_function_args(func):
     for args in func.get('args').get('args'):
         var = args.get('id')
     return var
+
 
 def find_args(operand, args):
     #logger.warning('%r, %r', operand, args)
@@ -436,9 +438,11 @@ def find_args(operand, args):
     else:
         return
 
+
 def find_all_leafs(args, leafs):
     for arg in args:
         find_arg_leafs(arg, leafs)
+
 
 def find_arg_leafs(arg, leafs):
     """recursive to find all leafs"""
@@ -504,6 +508,7 @@ def find_arg_leafs(arg, leafs):
         if 'left' in fields and arg.get('left').get('_fields'):
             find_arg_leafs(arg.get('left'), leafs)
     return
+
 
 def rec_get_attr_top_id(func, parent, ids):
     """
