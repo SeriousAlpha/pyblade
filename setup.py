@@ -9,11 +9,11 @@ setup(
       url="http://http://gitlab.task.ac.cn/vdg/pyblade",
       license="GNU",
       author_email='huangyong@iscas.ac.cn',
-      packages= ['pyblade.analyser', 'pyblade.conf', 'pyblade.summary', 'pyblade.utils', 'pyblade.traversers'],  #find packages
+      packages= ['pyblade.conf', 'pyblade.summary', 'pyblade.utils', 'pyblade.traversers'],  #find packages
       #package_dir={'pyblade': 'pyblade'},
       #entry_points={'console_scripts': ['pyblade = pyblade:scan']},
       #scripts=["scripts/main.py"],
       platforms="Independant",
-      py_modules=['pyblade.cfg_generate'],  #listing individual modules
+      py_modules=['pyblade.cfg_generate', 'pyblade.TaintAnalysers'],  #listing individual modules
 )
 

@@ -3,6 +3,7 @@
 import sys
 import os
 
+
 def list_file(filename2):
     cmd = "cat " + filename2
     cat = 'list'
@@ -12,17 +13,19 @@ def list_file(filename2):
         cmd = "cat " + filename4
         print cmd
 
-        os.system('cat')
+        os.system(cmd)
 
     demo(cmd)
+
 
 def demostate(filename3):
     os.system(filename3)
 
+
 def cat_file(filename1):
     cmd = "cat " + filename1
     print cmd
-    os.system(filename1)
+    #os.system(filename1)
     list_file(cmd)
 
 if __name__ == '__main__':

@@ -1,6 +1,26 @@
 # !env python
 # coding=utf-8
 #
+#
+#      functiondef.py
+#
+#      Copyright (C)  2015 - 2016 revised by Yong Huang <huangyong@iscas.ac.cn>
+#
+#      This program is free software; you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation; either version 2 of the License, or
+#      (at your option) any later version.
+#
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#
+#      You should have received a copy of the GNU General Public License
+#      along with this program; if not, write to the Free Software
+#      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#      MA 02110-1301, USA.
+
 import uuid
 import os
 import json
@@ -86,13 +106,21 @@ def setInDict(dataDict, mapList, value):
 
 def find_function_call(content, detail_func, root_name):
     for body in content:
+        if body.get('type') == 'Expr':
+            call_lineno = body.get('lineno')
+            call_name = (body.get('value').get('func').get('id') == None and body.get('value').get('func').get('value').get('id') or body.get('value').get('func').get('id'))
+            call_funcID = gennerate_uuid(root_name, call_lineno)
+            print call_name, call_funcID
         if body.get('type') == 'FunctionDef':
-            print body
             func_name = body.get('name')
             lineno = body.get('lineno')
             funcID = gennerate_uuid(root_name, lineno)
             detail_func.setdefault(funcID, {'name': func_name, 'key': lineno})
             find_function_call(body.get('body'), detail_func, root_name)
+
+
+def get_call_funcname(func):
+    pass
 
 
 def print_find_function(content):

@@ -290,7 +290,8 @@ class TaintAnalyzer(object):
                                         self.taint_top.append(assigned)
                                         print self.taint_top
                                         for key, value in self.record_unsafe_func.iteritems():
-                                            if value.get('arg_leafs') == [self.taint_top[-2]]:
+                                            print value.get('arg_leafs')
+                                            if value.get('arg_leafs') == [self.taint_top[-1]]:
                                                 ALERT = False
                                             else:
                                                 ALERT = True
@@ -367,7 +368,7 @@ def rec_decrease_tree(tree):
 
 
 def rec_get_func_ids(func, func_ids):
-    if func.get('type') in ('Name','Attribute'):
+    if func.get('type') in ('Name', 'Attribute'):
         get_func_id(func, func_ids)
     if 'value' in func and func.get('value').get('func'):
         rec_get_func_ids(func.get('value').get('func'), func_ids)

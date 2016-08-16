@@ -2,6 +2,8 @@
 ============
  Source Code Auto Audit
 ----------------------
+pyblade参考了王垠的在pysonar2项目中对python的语法树解析，具体来讲就是利用了他的python_dump.py文件会对python源代码文件进行解析，他的项目地址:https://github.com/yinwang0/pysonar2
+
 
 ### 基本原理：
 -----
@@ -35,4 +37,7 @@ files是待检测的代码生成的字典。生成的具体方法参见tests目�
 * color_log.py 用于对log进行着色
 * dump_python.py 对Python进行语法树分析,把源文件转成一个字典保存
 * cfg_generate.py 用于产生控制流图
+
+### License
+GNU
 
