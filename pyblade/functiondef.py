@@ -33,6 +33,7 @@ from collections import defaultdict
 from collections import OrderedDict
 
 logger = utils.color_log.init_log(logging.DEBUG)
+pp = pprint.PrettyPrinter(depth=10)
 
 dir = os.path.abspath('..')
 file = os.path.join(dir, 'tests', 'sample2.py')
@@ -76,8 +77,24 @@ def find_function(content, func_trees, rootname, origin_node):
             functionID = gennerate_uuid(rootname, lineno)
             newnode = origin_node[:]
             newnode.append(lineno)
+            node = newnode[:]
             setInDict(func_trees, newnode, {'key': functionID, 'name': key})
             find_function(body.get('body'), func_trees, rootname, newnode)
+
+        elif body.get('type') == 'Expr' and body.get('value').get('type') == 'Call':
+            call_lineno = body.get('lineno')
+            call_name = (body.get('value').get('func').get('id') == None and body.get('value').get('func').get('value').get('id') or body.get('value').get('func').get('id'))
+            call_funcID = gennerate_uuid(rootname, call_lineno)
+            Expr_node = origin_node[:]
+            Expr_node.append('call')
+            setInDict(func_trees, Expr_node, {call_lineno: {'key': call_funcID, 'name': call_name}})
+
+        elif body.get('type') == 'Assign' and body.get('value').get('type') == 'Call':
+            assign_lineno = body.get('lineno')
+            call_assgin = body.get('value').get('func').get('id')
+            Assgin_node = origin_node[:]
+            Assgin_node.append('call')
+            setInDict(func_trees, Assgin_node, {assign_lineno: {'key': None, 'name': call_assgin}})
 
 
 def tree():
@@ -101,21 +118,21 @@ def getFromDict(dataDict, mapList):
 def setInDict(dataDict, mapList, value):
     for k in mapList[:-1]:
         dataDict = dataDict[k]
-    dataDict[mapList[-1]] = value
+    dataDict[mapList[-1]].update(value)
 
 
 def find_function_call(content, detail_func, root_name):
     for body in content:
-        if body.get('type') == 'Expr':
+        if body.get('type') == 'Expr' and body.get('value').get('type') == 'Call':
             call_lineno = body.get('lineno')
             call_name = (body.get('value').get('func').get('id') == None and body.get('value').get('func').get('value').get('id') or body.get('value').get('func').get('id'))
             call_funcID = gennerate_uuid(root_name, call_lineno)
-            print call_name, call_funcID
+
         if body.get('type') == 'FunctionDef':
             func_name = body.get('name')
             lineno = body.get('lineno')
             funcID = gennerate_uuid(root_name, lineno)
-            detail_func.setdefault(funcID, {'name': func_name, 'key': lineno})
+            detail_func.setdefault(funcID, {'name': func_name, 'call': lineno})
             find_function_call(body.get('body'), detail_func, root_name)
 
 
@@ -148,9 +165,8 @@ def main():
     detail_func = OrderedDict({})
     find_function(body, func_tree, root_name, [root_name])
     find_function_call(body, detail_func, root_name)
-    pp = pprint.PrettyPrinter(depth=10)
     pp.pprint(dicts(func_tree))
-    pp.pprint(dicts(detail_func))
+    #pp.pprint(dicts(detail_func))
 
 
 if __name__ == "__main__":

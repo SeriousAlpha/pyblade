@@ -16,11 +16,11 @@ def test(num):
         func(arg)
 
     def func4():
-        pass
+        func2('123')
         def func5():
             pass
     func4()
-    func2()
+    func2(cmd)
     if 1 == num:
         def func3():
             pass
