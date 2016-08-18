@@ -69,7 +69,9 @@ def get_tree(file):
     return tree
 
 
-def find_function(content, func_trees, rootname, origin_node):
+def find_function(content, func_trees, rootname, origin_node, label_num):
+    args_list = []
+    count = 0
     for body in content:
         if body.get('type') == 'FunctionDef':
             key = body.get('name')
@@ -77,24 +79,42 @@ def find_function(content, func_trees, rootname, origin_node):
             functionID = gennerate_uuid(rootname, lineno)
             newnode = origin_node[:]
             newnode.append(lineno)
-            node = newnode[:]
+            count = count + 1
+            label = label_num[:]
+            label.append(count)
+            print label
+            func_args = body.get('args').get('args')
+            if func_args is not None:
+                if len(func_args) == 1:
+                    for arg in func_args:
+                        args_list = [(arg.get('id'))]
+                        setInDict(func_trees, newnode, {'args': args_list})
+                if len(func_args) > 1:
+                    for arg in func_args:
+                        args_list.append(arg.get('id'))
+                    setInDict(func_trees, newnode, {'args': args_list})
             setInDict(func_trees, newnode, {'key': functionID, 'name': key})
-            find_function(body.get('body'), func_trees, rootname, newnode)
+            find_function(body.get('body'), func_trees, rootname, newnode, label_num)
 
         elif body.get('type') == 'Expr' and body.get('value').get('type') == 'Call':
             call_lineno = body.get('lineno')
+            #todo os.system() to handle
             call_name = (body.get('value').get('func').get('id') == None and body.get('value').get('func').get('value').get('id') or body.get('value').get('func').get('id'))
-            call_funcID = gennerate_uuid(rootname, call_lineno)
             Expr_node = origin_node[:]
             Expr_node.append('call')
-            setInDict(func_trees, Expr_node, {call_lineno: {'key': call_funcID, 'name': call_name}})
+            setInDict(func_trees, Expr_node, {call_lineno: {'name': call_name}})
 
         elif body.get('type') == 'Assign' and body.get('value').get('type') == 'Call':
             assign_lineno = body.get('lineno')
             call_assgin = body.get('value').get('func').get('id')
             Assgin_node = origin_node[:]
             Assgin_node.append('call')
-            setInDict(func_trees, Assgin_node, {assign_lineno: {'key': None, 'name': call_assgin}})
+            setInDict(func_trees, Assgin_node, {assign_lineno: {'name': call_assgin}})
+
+        elif body.get('type') == 'If':
+            #print body.get('test')
+            #print body.get('orelse')
+            pass
 
 
 def tree():
@@ -163,7 +183,7 @@ def main():
     body = trees.get('body')
     func_tree = tree()
     detail_func = OrderedDict({})
-    find_function(body, func_tree, root_name, [root_name])
+    find_function(body, func_tree, root_name, [root_name], [])
     find_function_call(body, detail_func, root_name)
     pp.pprint(dicts(func_tree))
     #pp.pprint(dicts(detail_func))
