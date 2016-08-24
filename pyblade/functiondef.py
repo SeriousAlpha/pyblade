@@ -31,7 +31,7 @@ import pprint
 
 from collections import defaultdict
 from collections import OrderedDict
-
+from TaintAnalysers import rec_decrease_tree,get_func_id
 logger = utils.color_log.init_log(logging.DEBUG)
 pp = pprint.PrettyPrinter(depth=10)
 
@@ -48,19 +48,6 @@ def gennerate_uuid(rootname, lineno):
     return uuid.uuid3(uuid.NAMESPACE_DNS, name).hex
 
 
-def rec_decrease_tree(tree):
-    if isinstance(tree, dict):
-        for key in tree.keys():
-            if key in ['col_offset', 'start', 'end', 'ctx', 'extra_attr', 'attr_name']:
-                del(tree[key])
-            else:
-                if isinstance(tree[key], dict):
-                    rec_decrease_tree(tree[key])
-                if isinstance(tree[key], list):
-                    for l in tree[key]:
-                        rec_decrease_tree(l)
-
-
 def get_tree(file):
     for name, lines in file.iteritems():
         tree = utils.dump_python.parse_json_text(name, lines)
@@ -69,7 +56,7 @@ def get_tree(file):
     return tree
 
 
-def find_function(content, func_trees, rootname, origin_node, label_num):
+def find_function(content, func_trees, rootname, origin_node, label_num, if_label):
     args_list = []
     count = 0
     for body in content:
@@ -81,20 +68,10 @@ def find_function(content, func_trees, rootname, origin_node, label_num):
             newnode.append(lineno)
             count = count + 1
             label = label_num[:]
-            label.append(count)
-            print label
-            func_args = body.get('args').get('args')
-            if func_args is not None:
-                if len(func_args) == 1:
-                    for arg in func_args:
-                        args_list = [(arg.get('id'))]
-                        setInDict(func_trees, newnode, {'args': args_list})
-                if len(func_args) > 1:
-                    for arg in func_args:
-                        args_list.append(arg.get('id'))
-                    setInDict(func_trees, newnode, {'args': args_list})
-            setInDict(func_trees, newnode, {'key': functionID, 'name': key})
-            find_function(body.get('body'), func_trees, rootname, newnode, label_num)
+            label.append(str(count))
+            get_func_arglist(body, func_trees, newnode)
+            setInDict(func_trees, newnode, {'key': functionID, 'name': key, 'label': '.'.join(label)})
+            find_function(body.get('body'), func_trees, rootname, newnode, label, if_label)
 
         elif body.get('type') == 'Expr' and body.get('value').get('type') == 'Call':
             call_lineno = body.get('lineno')
@@ -112,9 +89,99 @@ def find_function(content, func_trees, rootname, origin_node, label_num):
             setInDict(func_trees, Assgin_node, {assign_lineno: {'name': call_assgin}})
 
         elif body.get('type') == 'If':
-            #print body.get('test')
-            #print body.get('orelse')
-            pass
+            if_count = 0
+            for body_ in body.get('body'):
+                if body_.get('type') == 'FunctionDef':
+                    count = count + 1
+                    if_node = origin_node[:]
+                    if_lineno = body_.get('lineno')
+                    funcID = gennerate_uuid(rootname, if_lineno)
+                    if_node.append('if')
+                    if_func_name = body_.get('name')
+                    if_count += 1
+                    if_label_num = if_label[:]
+                    if_label_num.append(str(if_count))
+                    setInDict(func_trees, if_node, {if_lineno: {'name': if_func_name, 'key': funcID, 'label': '.'.join(if_label_num)}})
+                    find_function(body.get('body'), func_trees, rootname, if_node, label, if_label_num)
+
+
+def new_dict(content, new_func_tree, label):
+    count = 0
+    expr_dict = {}
+    for body in content:
+        if body.get('type') == 'FunctionDef':
+            #get_func_id(body,)
+            func_name = body.get('name')
+            lineno = body.get('lineno')
+            count = count + 1
+            re_label = label[:]
+            re_label.append(str(count))
+            key = '.'.join(re_label)
+            key_count = '.'.join(re_label[:-1])
+            arg_list = get_func_args(body)
+            new_func_tree.setdefault(key, {'lineno': lineno, 'name': func_name, 'args': arg_list, 'children': count})
+            if not key_count:
+                if '0' in new_func_tree.keys():
+                    add_child = new_func_tree['0'].get('children') + 1
+                    new_func_tree['0'].update({'children': add_child})
+                else:
+                    new_func_tree.setdefault('0', {'children': 1})
+            else:
+                new_func_tree[key_count].update({'children': count})
+            new_dict(body.get('body'), new_func_tree, re_label)
+
+
+        elif body.get('type') == 'Expr' and body.get('value').get('type') == 'Call':
+            call_lineno = body.get('lineno')
+            call_name = (body.get('value').get('func').get('id') == None and body.get('value').get('func').get('value').get('id') or body.get('value').get('func').get('id'))
+            expr_label = label[:]
+            expr_key = '.'.join(expr_label)
+            new_func_tree[expr_key].setdefault('call', {})
+            new_func_tree[expr_key]['call'].update({call_lineno: {'name': call_name}})
+
+        elif body.get('type') == 'Assign' and body.get('value').get('type') == 'Call':
+            assign_lineno = body.get('lineno')
+            call_assgin = body.get('value').get('func').get('id')
+            assign_label = label[:]
+            assign_key = '.'.join(assign_label)
+            #print assign_key
+            new_func_tree[assign_key].setdefault('call', {})
+            new_func_tree[assign_key]['call'].update({assign_lineno: {'name': call_assgin}})
+
+        elif body.get('type') == 'If':
+            if_label = re_label[:]
+            print if_label
+            if_key = '.'.join(if_label)
+            #new_dict(body.get('body'), new_func_tree, re_label)
+
+
+
+def get_func_arglist(func, func_trees, node):
+    arg_list = []
+    func_args = func.get('args').get('args')
+    if func_args is not None:
+        if len(func_args) == 1:
+            for arg in func_args:
+                arg_list = [arg.get('id')]
+                setInDict(func_trees, node, {'args': arg_list})
+        if len(func_args) > 1:
+            for arg in func_args:
+                arg_list.append(arg.get('id'))
+            setInDict(func_trees, node, {'args': arg_list})
+
+
+def get_func_args(func):
+    arg_list = []
+    func_args = func.get('args').get('args')
+    if func_args is not None:
+        if len(func_args) == 1:
+            for arg in func_args:
+                arg_list = [arg.get('id')]
+            return arg_list
+        if len(func_args) > 1:
+            for arg in func_args:
+                arg_list.append(arg.get('id'))
+            return arg_list
 
 
 def tree():
@@ -155,6 +222,14 @@ def find_function_call(content, detail_func, root_name):
             detail_func.setdefault(funcID, {'name': func_name, 'call': lineno})
             find_function_call(body.get('body'), detail_func, root_name)
 
+        if body.get('type') == 'If':
+            for body_ in body.get('body'):
+                if body_.get('type') == 'FunctionDef':
+                    if_func_name = body_.get('name')
+                    lineno_ = body_.get('lineno')
+                    funcID_ = gennerate_uuid(root_name, lineno_)
+                    detail_func.setdefault(funcID_, {'name': if_func_name, 'call': lineno_})
+
 
 def get_call_funcname(func):
     pass
@@ -182,10 +257,13 @@ def main():
     root_name = os.path.join(parent_path, 'test', filename)
     body = trees.get('body')
     func_tree = tree()
+    new_func_tree = OrderedDict({})
     detail_func = OrderedDict({})
-    find_function(body, func_tree, root_name, [root_name], [])
+    find_function(body, func_tree, root_name, [root_name], [], [])
+    new_dict(body, new_func_tree, [])
+    pp.pprint(dicts(new_func_tree))
     find_function_call(body, detail_func, root_name)
-    pp.pprint(dicts(func_tree))
+    #pp.pprint(dicts(func_tree))
     #pp.pprint(dicts(detail_func))
 
 
