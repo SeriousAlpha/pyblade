@@ -20,6 +20,12 @@ def test(num):
         def func5():
             pass
 
+        def func11():
+            pass
+
+    def func10():
+        pass
+
     func4()
     func2(cmd)
     if 1 == num:
@@ -38,9 +44,16 @@ def test(num):
         def func6():
             pass
 
+    def func12():
+        pass
+
+    def func13():
+        pass
+
 
 def build_airport():
-    pass
+    def func9():
+        pass
 
 
 def test_func(cmd):
