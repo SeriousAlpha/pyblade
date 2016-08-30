@@ -2,6 +2,10 @@
 ============
  Source Code Auto Audit
 ------------------
+### Status:
+    在python 2.7编译通过
+* [![Build Status](https://travis-ci.org/younggege/pyblade.svg?branch=master)](https://travis-ci.org/younggege/pyblade)
+
 pyblade参考了王垠的在pysonar2项目中对python的语法树解析，具体来讲就是利用了他的python_dump.py文件会对python源代码文件进行解析，他的项目地址:https://github.com/yinwang0/pysonar2
 
 ### 问题来源：
@@ -51,13 +55,15 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
 * 语法树的表示-类
     在类的语法树中，包含body，decorator_list,lineno,name,base等字段type是ClassDef，表明该结构为class，body中则包含着函数的结构体，base则是继承的父类。
 * 语法树的表示-分支
-    下面我们将以一个if结构片段代码作为示例，来解释Python源码到其语法树的对应关系。片段代码:
+    下面我们将以一个if结构片段代码作为示例，来解释Python源码到其语法树的对应关系。片段代码：
     ```python
     if type not in ["RSAS", "BVS"]:
         return HttpResponse("2")
     ```
     它生成的代码如下所示：
-    ｛"body": [...], "lineno": 5,  "test": {... }, "type": "If", "orelse": [] }
+    ｛"body": [...], "lineno": 5,  "test": { "ops": [{ "type": "NotIn" }], "comparators": [...], "opsName": [...],}, "type": "If", "orelse": [] }
+    在这个语法树结构中，body里包含着if结构中的语句HttpResponse("2"),type为Compare表示该结构体为判断语句，left表示左值即源码中的type，test结构体中则是用来进行if判断，
+    test中的ops对应着源码中的not in，表示比较判断，comparators则是被比较的元素。这样源码就和Python语法树一一对应起来，有了这些一一对应的基础，就有了判断Python注入问题的原型。
     
     
 ### 基本原理：
