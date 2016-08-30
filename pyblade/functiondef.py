@@ -105,7 +105,7 @@ def find_function(content, func_trees, rootname, origin_node, label_num, if_labe
                     find_function(body.get('body'), func_trees, rootname, if_node, label, if_label_num)
 
 
-def new_dict(content, new_func_tree, label, flag):
+def new_dict(content, new_func_tree, label):
     count = 0
     for body in content:
         if body.get('type') == 'FunctionDef':
@@ -113,16 +113,13 @@ def new_dict(content, new_func_tree, label, flag):
             func_name = body.get('name')
             lineno = body.get('lineno')
             count += 1
+            re_count = count
             re_label = label[:]
             re_label.append(str(count))
             key = '.'.join(re_label)
             key_parent = '.'.join(re_label[:-1])
             arg_list = get_func_args(body)
-            if flag:
-                new_func_tree.setdefault(key, {'lineno': lineno, 'name': func_name, 'args': arg_list, 'if': 'if', 'children': 0})
-                flag = False
-            else:
-                new_func_tree.setdefault(key, {'lineno': lineno, 'name': func_name, 'args': arg_list, 'children': 0})
+            new_func_tree.setdefault(key, {'lineno': lineno, 'name': func_name, 'args': arg_list, 'children': 0})
             if not key_parent:
                 if '0' in new_func_tree.keys():
                     add_child = new_func_tree['0'].get('children') + 1
@@ -132,9 +129,10 @@ def new_dict(content, new_func_tree, label, flag):
             else:
                 update_child = new_func_tree[key_parent].get('children') + 1
                 new_func_tree[key_parent].update({'children': update_child})
-            new_dict(body.get('body'), new_func_tree, re_label, flag)
+            new_dict(body.get('body'), new_func_tree, re_label)
 
         elif body.get('type') == 'Expr' and body.get('value').get('type') == 'Call':
+            #todo fix the bug of call
             call_lineno = body.get('lineno')
             call_name = (body.get('value').get('func').get('id') == None and body.get('value').get('func').get('value').get('id') or body.get('value').get('func').get('id'))
             expr_label = label[:]
@@ -153,13 +151,10 @@ def new_dict(content, new_func_tree, label, flag):
         elif body.get('type') == 'If':
             #todo handle the if
             if_label = re_label[:]
-            flag = True
-        #    re_if_count = int(if_label[-1]) + 1
-        #    if_label.append(str(re_if_count))
-        #    if_key = '.'.join(if_label)
-        #    new_func_tree.setdefault(if_key, {'lineno': if_lineno})
-            new_dict(body.get('body'), new_func_tree, if_label, flag)
-
+            #if_label.append(str(int(if_label[-1])+1))
+            #new_func_tree.setdefault('if', {})
+         #   print if_label
+            new_dict(body.get('body'), new_func_tree, if_label)
 
 
 def get_func_arglist(func, func_trees, node):
@@ -266,7 +261,7 @@ def main():
     new_func_tree = OrderedDict({})
     detail_func = OrderedDict({})
     find_function(body, func_tree, root_name, [root_name], [], [])
-    new_dict(body, new_func_tree, [], False)
+    new_dict(body, new_func_tree, [])
     pp.pprint(dicts(new_func_tree))
     find_function_call(body, detail_func, root_name)
     #pp.pprint(dicts(func_tree))

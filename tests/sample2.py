@@ -20,17 +20,12 @@ def test(num):
         def func5():
             pass
 
-        def func11():
-            pass
-
-    def func10():
-        pass
 
     func4()
     func2(cmd)
     if 1 == num:
         def func3():
-            pass
+            print 'func3'
         func2(cmd)
         if True:
             def func7():
@@ -40,15 +35,6 @@ def test(num):
         return func1
     elif 2 == num:
         return func2
-    elif 3 == num:
-        def func6():
-            pass
-
-    def func12():
-        pass
-
-    def func13():
-        pass
 
 
 def build_airport():
@@ -60,7 +46,6 @@ def test_func(cmd):
     os.system(cmd)
 
 if __name__ == '__main__':
-    import sys
     cmd = sys.argv[1]
     func = test(1)
     func(test_func, cmd)
