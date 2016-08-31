@@ -9,7 +9,7 @@ strings = fd.read()
 
 
 files = {
-    'if.py': strings}
+    'sample2.py': strings}
 
 
 res = scan(files)

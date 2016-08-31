@@ -9,6 +9,6 @@ install:
 
 #script: tox
 script: python setup.py install
-after success: python testcode.py
+after_success: python testcode.py
 notifications:
     email: false
