@@ -58,7 +58,7 @@ class TaintAnalyzer(object):
         self.tree = json.loads(self.tree)
         rec_decrease_tree(self.tree)
         dir = os.path.abspath('.')
-        files = os.path.join(dir, 'tests\\sample2.py')
+        files = os.path.join(dir, 'tests\\taintanalysis.py')
         if DEBUG:
             try:
                 fd = open(files+".json", 'w')

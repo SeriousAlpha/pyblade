@@ -5,7 +5,8 @@
 ### Status:
  master:[![Build Status](https://travis-ci.org/younggege/pyblade.svg?branch=master)](https://travis-ci.org/younggege/pyblade)
  unstable:[![Build Status](https://travis-ci.org/younggege/pyblade.svg?branch=github_unstable)](https://travis-ci.org/younggege/pyblade)
-pyblade参考了王垠的在pysonar2项目中对python的语法树解析，具体来讲就是利用了他的python_dump.py文件会对python源代码文件进行解析，他的项目地址:[pysonar2](https://github.com/yinwang0/pysonar2)
+ 
+ pyblade参考了王垠的在pysonar2项目中对python的语法树解析，具体来讲就是利用了他的python_dump.py文件会对python源代码文件进行解析，他的项目地址:[pysonar2](https://github.com/yinwang0/pysonar2)
 
 ### 问题来源：
 Python注入问题是说用户可以控制输入，导致系统执行一些危险的操作。它是Python中比较常见的安全问题，特别是把python作为web应用层的时候这个问题就更加突出，它包括代码注入，OS命令注入，sql注入，任意文件下载等。
@@ -54,10 +55,10 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
 * 语法树的表示-类
     在类的语法树中，包含body，decorator_list,lineno,name,base等字段type是ClassDef，表明该结构为class，body中则包含着函数的结构体，base则是继承的父类。
 * 语法树的表示-分支
-    下面我们将以一个if结构片段代码作为示例，来解释Python源码到其语法树的对应关系。片段代码：
+    下面我们将以一个if结构片段代码作为示例，来解释Python源码到其语法树的对应关系。片段代码：   
     ```python
     if type not in ["RSAS", "BVS"]:
-        return HttpResponse("2")
+        HttpResponse("2")
     ```
     它生成的代码如下所示：
     ｛"body": [...], "lineno": 5,  "test": { "ops": [{ "type": "NotIn" }], "comparators": [...], "opsName": [...],}, "type": "If", "orelse": [] }
