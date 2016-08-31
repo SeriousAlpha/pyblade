@@ -55,7 +55,7 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
 * 语法树的表示-类
     在类的语法树中，包含body，decorator_list,lineno,name,base等字段type是ClassDef，表明该结构为class，body中则包含着函数的结构体，base则是继承的父类。
 * 语法树的表示-分支
-    下面我们将以一个if结构片段代码作为示例，来解释Python源码到其语法树的对应关系。片段代码：   
+    下面我们将以一个if结构片段代码作为示例，来解释Python源码到其语法树的对应关系。片段代码： 
     ```python
     if type not in ["RSAS", "BVS"]:
         HttpResponse("2")
