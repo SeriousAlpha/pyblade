@@ -81,11 +81,11 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
 3. 函数调用传递形式参数。在函数定义出使用的形式参数，在函数调用时会以实际参数传入，例如：cat_file(file)
 4. 类的实例化。Python支持面向对象编程，类对象支持两种操作：引用和实例化。引用操作是通过类对象去调用类中的属性或者方法，而实例化是产生出一个类对象的实例。因此污点变量可以通过类进行传播。
 
-<center>
+<div align="center">
 <img src="https://raw.githubusercontent.com/younggege/photos/77065cc752f4055b79d9eedb2a149b0a5428cf0c/taint.png" />
 
 Figure 1. 污点传播分析示例图
-</center>
+ </div>
   
    为便于表述传播规则，引入函数 T 和布尔变量 t_v。函数 T 接受一个变量值，如果该变量值被标记为污点数据，则返回 true，否则返回 false。布尔变量 t_v 表
 示是否应该对变量值 v 进行污点标记，如果 t_v=true，则变量 v 也被标记为污点数据，否则，不对 v 进行污点标记。 
@@ -123,11 +123,11 @@ files是待检测的代码生成的字典。生成的具体方法参见tests目�
 
 ### 实现效果示例：
 
-<center>
+<div align="center">
 <img src="https://raw.githubusercontent.com/younggege/photos/master/testfile.png" />
 
 Figure 2. 污点传播分析待检测样本
-</center>
+ </div>
 
 
 <div align="center">
