@@ -53,14 +53,19 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
 ### Python语法树：
     很显然在参数不断传递过程中，通过普通的正则表达式去匹配危险代码已经无能为力了。而语法树的分析可以解决参数传递的问题，是污点分析的基础。
 * 语法树的表示-文件
+
     一个文件中可以有函数，类，它是模块的组成单位。大体结构如下：{"body": [{},{}], "filename": "test.py", "type": "module"}
 * 语法树的表示-函数
+
     {"body": [...], ... ,"name": "func1","args": {"vararg": null, "args":[...], "kwarg": null}, "lineno": 10, "_field":[], "type": "FunctionDef"}
 * 语法树的表示-类
+
     {"body":[...], ... ,"decorator_list":[],name": "AstTree","bases":[...],"lineno" : 6, "name_node": {...}, "type":"ClassDef"}
     在类的语法树中，包含body，decorator_list,lineno,name,base等字段type是ClassDef，表明该结构为class，body中则包含着函数的结构体，bases则是继承的父类。
 * 语法树的表示-分支
+
     下面我们将以一个if结构片段代码作为示例，来解释Python源码到其语法树的对应关系。片段代码： 
+    
     if type not in ["RSAS", "BVS"]:
         HttpResponse("2")
         
