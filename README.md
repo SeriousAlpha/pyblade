@@ -83,7 +83,9 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
 
 <div align="center">
 <img src="https://raw.githubusercontent.com/younggege/photos/77065cc752f4055b79d9eedb2a149b0a5428cf0c/taint.png" />
-
+ </div>
+ 
+<div align="center">
 Figure 1. 污点传播分析示例图
  </div>
   
