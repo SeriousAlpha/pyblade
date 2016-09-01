@@ -13,3 +13,9 @@ OTHER = [ 'os.popen', 'eval', 'evec', 'popen', 'execfile', 'os.spawnl', 'os.spaw
 
 SOURCE = FILE + OS_COMMAND + OTHER
 
+STR_FUNCS = ['str','unicode','encode','strip','rstrip','lstrip','lower','upper','split','splitlines', 'replace','join']
+
+SAFE_FUNCS = ['safe_eval']
+
+REQUEST_VAR = ['GET', 'POST', 'FILES', 'COOKIES', 'REQUEST']
+

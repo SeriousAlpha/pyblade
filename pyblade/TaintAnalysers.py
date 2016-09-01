@@ -32,7 +32,7 @@ from utils import dump_python
 from collections import OrderedDict
 
 from conf.sources import SOURCE_LIST
-from conf.sinks import SOURCE
+from conf.sinks import *
 
 DEBUG = True
 ALERT = True
@@ -43,6 +43,7 @@ CMD_COUNT = 0
 is_arg_in = False
 is_arg_return_op = False
 
+File = 'taintanalysis.py'
 
 logger = color_log.init_log(logging.DEBUG)
 # DEBUG INFO WARNING ERROR CRITICAL
@@ -58,7 +59,7 @@ class TaintAnalyzer(object):
         self.tree = json.loads(self.tree)
         rec_decrease_tree(self.tree)
         dir = os.path.abspath('.')
-        files = os.path.join(dir, 'tests\\taintanalysis.py')
+        files = os.path.join(dir, 'tests\\' + File)
         if DEBUG:
             try:
                 fd = open(files+".json", 'w')
@@ -152,12 +153,17 @@ class TaintAnalyzer(object):
         is_arg_return_op = False
         arg_leafs = []
         func_name = func.get('name')
+        #logger.debug("fucntion_name:%s" %(func_name))
         args_ori = set([arg.get('id') for arg in func.get('args').get("args")]) #arg.id
         if class_name and self.arg.get(class_name):
             arg_tmp = set(self.arg.get(class_name))
             args_ori = args_ori | arg_tmp
+        #logger.debug("args:%s" % str(args_ori))
         self.func_lines.setdefault(func_name, [])
         self.get_func_lines(func, func_name)
+        lines = self.func_lines[func_name]
+        #logger.debug("func_lines:%r" % (lines))
+        look_up_arg(func, args_ori, arg_leafs, func_name)
         if func_name == '__init__':
             self.arg.setdefault(class_name, args_ori)
         self.record_param[func_name] = args_ori # ??????
@@ -290,7 +296,6 @@ class TaintAnalyzer(object):
                                         self.taint_top.append(assigned)
                                         print self.taint_top
                                         for key, value in self.record_unsafe_func.iteritems():
-                                            print value.get('arg_leafs')
                                             if value.get('arg_leafs') == [self.taint_top[-1]]:
                                                 ALERT = False
                                             else:
@@ -468,8 +473,8 @@ def find_arg_leafs(arg, leafs):
     if _type == 'Call':
         func_ids = []
         rec_get_func_ids(arg.get('func'), func_ids)
-        logger.info('func_ids:%r,funcs:%r' %(func_ids,set(SOURCE)))
-        if set(func_ids)&(set(SOURCE)|set(FILE_UNSAFE_FUNCS)):
+        logger.info('func_ids:%r,funcs:%r' % (func_ids, set(SOURCE)))
+        if set(func_ids) & (set(SOURCE) | set(FILE_UNSAFE_FUNCS)):
             for value in arg.get('args'):
                 parent, topids = {}, []
                 rec_get_attr_top_id(value, parent, topids)
@@ -533,3 +538,338 @@ def rec_get_attr_top_id(func, parent, ids):
         rec_get_attr_top_id(func.get('value'), parent, ids)
     return
 
+def look_up_arg(func, args_ori, args, func_name):
+    """ recusive to find unsafe function args
+    func: test function,args_ori: test function args，args: unsafe function args
+    """
+    global is_arg_in
+    if isinstance(func, dict) and 'body' in func:
+        lines = func.get('body')
+    elif isinstance(func, list):
+        lines = func
+    elif isinstance(func, dict) and func.get('type') == 'Call':
+        lines = [func]
+    else:
+        lines = []
+
+    for line in lines:
+        #        print 'look_up_arg:line:',line
+        ast_body = line.get('body')
+        ast_orelse = line.get('orelse')
+        ast_handlers = line.get('handlers')
+        ast_test = line.get('test')
+        ast_args = line.get('args')
+        # 处理单纯属性
+        if line.get('type') == 'Assign':
+            target_ids = []
+            rec_get_targets(line.get('targets'), target_ids)
+        else:
+            target_ids = []
+
+        if line.get("type") == "Assign" and "value" in line and line.get("value").get("type") == "Name":
+            if target_ids and line.get("value").get("id") in args_ori:
+                args_ori.update(target_ids)
+                logger.info("In Assign,Name add (%r) to (%r) where line=(%r) line=(%r)" % (
+                target_ids, args_ori, line.get('lineno'), line))
+
+        if line.get("type") == "Assign" and "value" in line and line.get("value").get("type") == "Attribute":
+            value_func = line.get('value').get('value')
+            if value_func and value_func.get("type") == 'Name':
+                if target_ids and value_func.get("id") in args_ori:
+                    args_ori.update(target_ids)
+                    logger.info("In Assign,Attr add (%r) to (%r) where line=(%r) line=(%r)" % (
+                    target_ids, args_ori, line.get('lineno'), line))
+
+            else:
+                topids = []
+                parent = {}
+                rec_get_attr_top_id(value_func, parent, topids)
+                if (set(topids) & set(args_ori)):
+                    if topids and topids[0].lower() == 'request':
+                        if parent and parent.get('type') == 'Attribute' and parent.get('attr') in REQUEST_VAR:
+                            args_ori.update(target_ids)
+                            logger.info("In Assign,Attr add (%r) to (%r) where line=(%r) line=(%r)" % (
+                            target_ids, args_ori, line.get('lineno'), line))
+                        elif parent and parent.get('type') == 'Attribute':
+                            args_ori.difference_update(set(target_ids))
+                            logger.warn(
+                                "In Assign,Attr delete (%r) from (%r) where line=(%r)***************************** line=(%r)" % (
+                                target_ids, args_ori, line.get('lineno'), line))
+
+        # 处理字符串拼接过程
+        if line.get("type") == "Assign" and "value" in line and line.get("value").get("type") == "BinOp":
+            #            right = line.get('value').get('right')
+            #            if right.get('type') == 'Tuple':
+            #                rec_find_args(right.get('elts'))
+            leafs = []
+            find_arg_leafs(line.get("value"), leafs)
+            #logger.info('----%r----%r' % (args_ori, leafs))
+            if (set(args_ori) & set(leafs)):
+                if target_ids:
+                    args_ori.update(target_ids)
+                    logger.info("In Assign,BinOp add (%r) to (%r) where line=(%r)" % (target_ids, args_ori, line.get('lineno')))
+        # 列表解析式
+        if line.get("type") == "Assign" and "value" in line and line.get("value").get("type") in (
+        "ListComp", "SetComp"):
+            generators = line.get('value').get('generators')
+            leafs = []
+            for generator in generators:
+                find_arg_leafs(generator.get('iter'), leafs)
+                if target_ids and (set(args_ori) & set(leafs)):
+                    args_ori.update(target_ids)
+                    logger.info("In Assign,ListComp,SetComp add (%r) to (%r) where line=(%r) line=(%r)" % (
+                    target_ids, args_ori, line.get('lineno'), line))
+
+        # 处理列表中相加
+        if line.get('type') == 'Assign' and 'value' in line and line.get('value').get('type') in ('List', 'Tuple'):
+            leafs = []
+            for elt in line.get('value').get('elts'):
+                find_arg_leafs(elt, leafs)
+                if (set(args_ori) & set(leafs)):
+                    if target_ids:
+                        args_ori.update(target_ids)
+                        logger.info("In Assign,List add (%r) to (%r) where line=(%r) line=(%r)" % (
+                        target_ids, args_ori, line.get('lineno'), line))
+
+        # 处理 tmp= {'bb':a}情况
+        if line.get('type') == 'Assign' and 'value' in line and line.get('value').get('type') in ('Dict'):
+            leafs = []
+            for value in line.get('value').get('values'):
+                find_arg_leafs(value, leafs)
+                if (set(args_ori) & set(leafs)):
+                    if target_ids:
+                        args_ori.update(target_ids)
+                        logger.info("In Assign,Dict add (%r) to (%r) where line=(%r) line=(%r)" % (
+                        target_ids, args_ori, line.get('lineno'), line))
+
+        # 处理Subscript分片符情况
+        if line.get('type') == 'Assign' and 'value' in line and line.get('value').get('type') == 'Subscript':
+            value_type = line.get('value').get('value').get('type')
+            value_func_ids = []
+            rec_get_func_ids(line.get('value').get('value'), value_func_ids)
+            value_func_ids = set(value_func_ids)
+            value_arg_ids = []
+            find_arg_leafs(line.get('value').get('value'), value_arg_ids)
+            if value_type == 'Attribute':
+                if value_func_ids and value_func_ids.issubset((set(REQUEST_VAR) | set(STR_FUNCS))):
+                    if target_ids and not (set(value_arg_ids) & set(target_ids)):
+                        args_ori.update(target_ids)
+                        logger.info("In Assign,Subscript add (%r) to (%r) where line=(%r) line=(%r)" % (
+                        target_ids, args_ori, line.get('lineno'), line))
+
+        # 处理调用函数后的赋值,像str，get取值都保留
+        if line.get("type") == "Assign" and "value" in line and line.get("value").get("type") == "Call":
+            value_arg_ids = []
+            rec_find_args(line.get('value'), value_arg_ids)
+            value_func_ids = []
+            rec_get_func_ids(line.get('value').get('func'), value_func_ids)
+            value_func_ids = set(value_func_ids)
+            value_func_type = line.get("value").get('func').get('type')
+            value_func = line.get('value').get('func')
+            (topids, parent) = ([], {})
+            rec_get_attr_top_id(value_func, parent, topids)
+            logger.info('In Call:topids:%r,value_arg_ids:%r,value_func_ids:%r,line:%r' % (
+            topids, value_arg_ids, value_func_ids, line))
+
+            if value_arg_ids or topids:
+                # 处理普通方法
+                if value_func_type == 'Name' and (set(value_arg_ids) & set(args_ori)):
+
+
+                    if target_ids :  # 开了verbose模式，函数处理后的则直接加入到变量中
+                        args_ori.update(target_ids)
+                        logger.info("In Assign,Call:Verbose Name add (%r) to (%r) where line=(%r) line=(%r)" % (
+                        target_ids, args_ori, line.get('lineno'), line))
+                    else:
+                        if target_ids and value_func_ids and value_func_ids.issubset(
+                                (set(STR_FUNCS) | set(SOURCE))):
+                            args_ori.update(target_ids)
+                            logger.info("In Assign,Call:Name add (%r) to (%r) where line=(%r) line=(%r)" % (
+                            target_ids, args_ori, line.get('lineno'), line))
+                        elif target_ids and value_func_ids and (
+                            value_func_ids & ((set(SOURCE) | set(FILE_UNSAFE_FUNCS)))):
+                            is_arg_in = True
+                        elif target_ids and value_func_ids and set(value_func_ids) & (set(SOURCE)):
+                            args_ori.difference_update(target_ids)
+                            logger.warn(
+                                "In Assign,Call delete (%r) from (%r) where line=(%r)***************************** type=(%r)" % (
+                                target_ids, args_ori, line.get('lineno'), line))
+                        elif target_ids:
+                            args_ori.difference_update(target_ids)
+                            logger.warn(
+                                "In Assign,Call delete (%r) from (%r) where line=(%r)***************************** type=(%r)" % (
+                                target_ids, args_ori, line.get('lineno'), line))
+                            #                            for target in target_ids:#处理cmd=int(cmd) 这种情况
+                            #                                args_ori.difference_update(target_ids)
+                            #                                if target in args_ori:
+                            #                                    args_ori.discard(target)
+                            #                                    logger.info("arg_id,assign31:%r,args_ori:%r" %(value_arg_ids, args_ori))
+
+                elif value_func_type == 'Attribute':  # 处理属性方法，如从dict取值
+
+                    if (set(topids) & set(args_ori)):
+                        if topids[0].lower() == 'request':
+                            if parent and parent.get('type') == 'Attribute' and parent.get('attr') in REQUEST_VAR:
+                                if target_ids and not (set(value_arg_ids) & set(target_ids)):
+                                    args_ori.update(target_ids)
+                                    logger.info("In Assign,Call:attr add (%r) to (%r) where line=(%r) type=(%r)" % (
+                                    target_ids, args_ori, parent.get('lineno'), line))
+                            elif parent and parent.get('type') == 'Attribute':
+                                args_ori.difference_update(set(target_ids))  # 去除target_ids
+                                logger.warn(
+                                    "In Assign,Call:attr delete (%r) from (%r) where line=(%r)***************************** type=(%r)" % (
+                                    target_ids, args_ori, line.get('lineno'), line))
+
+                        elif value_func_ids and value_func_ids.issubset(set(STR_FUNCS) | set(SOURCE)) and (
+                            set(value_arg_ids) & set(args_ori)):
+                            if target_ids and not (set(value_arg_ids) & set(target_ids)):
+                                args_ori.update(target_ids)
+                                logger.info("In Assign,Call:attr add (%r) to (%r) where line=(%r) type=(%r)" % (
+                                target_ids, args_ori, line.get('lineno'), line))
+                        elif value_func_ids and set(value_func_ids) & set(SAFE_FUNCS) :
+                            if target_ids and not (set(value_arg_ids) & set(target_ids)):
+                                args_ori.difference_update(target_ids)
+                                logger.warn(
+                                    "In Assign,Call:attr delete (%r) from (%r) where line=(%r)***************************** type=(%r)" % (
+                                    target_ids, args_ori, line.get('lineno'), line))
+                        else:
+                            if target_ids and not (set(value_arg_ids) & set(target_ids)):
+                                args_ori.update(target_ids)
+                                logger.info("In Assign,Call:attr add (%r) to (%r) where line=(%r) type=(%r)" % (
+                                target_ids, args_ori, line.get('lineno'), line))
+                    # 处理r=unicode(s).encode('utf8')
+                    elif value_func_ids and value_func_ids.issubset(set(STR_FUNCS) | set(SOURCE)) and (
+                        set(value_arg_ids) & set(args_ori)):
+                        if target_ids and not (set(value_arg_ids) & set(target_ids)):
+                            args_ori.update(target_ids)
+                            logger.info("In Assign,Call:attr add (%r) to (%r) where line=(%r) type=(%r)" % (
+                            target_ids, args_ori, line.get('lineno'), line))
+
+                    elif value_func_ids and value_func_ids.issubset(set(STR_FUNCS) | set(SOURCE)) and (
+                        set(topids) & set(args_ori)):
+                        if target_ids and not (set(value_arg_ids) & set(target_ids)):
+                            args_ori.update(target_ids)
+                            logger.info("In Assign,Call:attr add (%r) to (%r) where line=(%r) type=(%r)" % (
+                            target_ids, args_ori, line.get('lineno'), line))
+                    elif value_func_ids and set(value_func_ids) & set(SAFE_FUNCS):
+                        if target_ids:
+                            args_ori.difference_update(target_ids)
+                            logger.warn(
+                                "In Assign,Call:attr delete (%r) from (%r) where line=(%r)***************************** type=(%r)" % (
+                                target_ids, args_ori, line.get('lineno'), line))
+
+
+
+
+                    elif value_func_ids and (value_func_ids & (set(SOURCE) | set(FILE_UNSAFE_FUNCS))):  # 处理危险函数
+                        leafs = []
+                        leafs = value_arg_ids
+                        if set(leafs) & set(args_ori):
+                            is_arg_in = True
+
+        if line.get('type') == 'Return' and 'value' in line and line.get('value'):
+            value_id = line.get('value').get('id')
+            if value_id and value_id in args_ori:
+                print 'untrited_func_name', func_name
+                SOURCE.add(func_name)
+
+        if line.get('type') == 'For':
+            iter_args = []
+            find_arg_leafs(line.get('iter'), iter_args)
+            if set(iter_args) & set(args_ori):
+                targets = []
+                find_arg_leafs(line.get('target'), targets)
+                if targets:
+                    args_ori.update(targets)
+                    logger.info("In For Call add (%r) to (%r) where line=(%r) line=(%r)" % (
+                    target_ids, args_ori, line.get('lineno'), line))
+
+        if line.get("type") == "Expr" and "value" in line and line.get("value").get("type") == "Call":
+            value_arg_ids = []
+            rec_find_args(line.get('value'), value_arg_ids)
+            if set(value_arg_ids) & set(args_ori):
+                is_arg_in = True
+
+        if line.get('type') == 'Call':  # 处理if语句中中eval类似函数
+            func_ids = []
+            rec_get_func_ids(line.get('func'), func_ids)
+            args_tmp = []
+            rec_find_args(line, args_tmp)
+            if (set(args_tmp) & args_ori) and func_ids and (
+                set(func_ids) & (set(SOURCE) | set(FILE_UNSAFE_FUNCS))):
+                is_arg_in = True
+                logger.info('type:call')
+                #        if line.get('type') == 'Ififif':
+        if line.get('type') == 'If':
+            is_if_return = False
+            is_if_param = False
+            is_in_param = False
+
+            if_judge_func = set(['exists', 'isfile', 'isdir', 'isabs', 'isdigit'])
+            for body in line.get('body'):
+                if body.get('type') == 'Return':
+                    is_if_return = True
+            test = line.get('test')
+            if test and test.get('type') == 'UnaryOp':
+                operand = test.get('operand')
+                args_tmp = []
+                if operand:
+                    rec_find_args(operand, args_tmp)
+                    if set(args_tmp) & set(args_ori):
+                        is_if_param = True
+                func_ids = []
+                rec_get_func_ids(operand, func_ids)
+                if set(func_ids) & if_judge_func and is_if_return and is_if_param:
+                    args_ori.difference_update(args_tmp)
+                    logger.warn("In If delete (%r) from (%r) where line=(%r)***************************** type=(%r)" % (
+                    args_tmp, args_ori, test.get('lineno'), test.get('type')))
+
+            if test and test.get('type') == 'Compare':
+                args_tmp = []
+                for key, value in test.iteritems():
+                    if key == 'left':
+                        if test[key].get('type') == 'Name':
+                            args_tmp = [test[key].get('id')]
+                    if key == 'comparators':
+                        for comparator in test[key]:
+                            if comparator.get('type') in ('List', 'Tuple'):
+                                for elt in comparator.get('elts'):
+                                    if elt.get('type') == 'Name' and elt.get('id') in args_ori:
+                                        is_in_param = True
+                if set(args_tmp) & set(args_ori) and is_if_return and not is_in_param:
+                    args_ori.difference_update(args_tmp)
+                    logger.warn("In If delete (%r) from (%r) where line=(%r)***************************** type=(%r)" % (
+                    args_tmp, args_ori, test.get('lineno'), test.get('type')))
+
+        if ast_body:
+            look_up_arg(ast_body, args_ori, args, func_name)
+        if ast_orelse:
+            look_up_arg(ast_orelse, args_ori, args, func_name)
+        if ast_handlers:
+            look_up_arg(ast_handlers, args_ori, args, func_name)
+        if ast_test and ast_test.get('comparators'):
+            look_up_arg(ast_test.get('comparators'), args_ori, args, func_name)
+        if ast_test and ast_test.get('left'):
+            look_up_arg(ast_test.get('left'), args_ori, args, func_name)
+        if ast_args:
+            look_up_arg(ast_args, args_ori, args, func_name)
+
+    return
+
+
+def rec_find_args(operand, args):
+    if isinstance(operand, list) or isinstance(operand, tuple):
+        find_all_leafs(operand, args)
+    elif isinstance(operand, dict):
+        if operand.get('type') == 'Call':
+            if "args" in operand:
+                find_all_leafs(operand.get('args'), args)
+            if "value" in operand.get('func'):
+                rec_find_args(operand.get('func').get('value'), args)
+        elif operand.get('type') == 'UnaryOp':  # not param判断中
+            rec_find_args(operand.get('operand'), args)
+        elif operand.get('type') == 'BinOp':
+            find_arg_leafs(operand, args)
+
+    else:
+        return
