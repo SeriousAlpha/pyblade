@@ -6,7 +6,8 @@
 
  unstable:[![Build Status](https://travis-ci.org/younggege/pyblade.svg?branch=github_unstable)](https://travis-ci.org/younggege/pyblade)
  
- pyblade参考了王垠的在pysonar2项目中对python的语法树解析，具体来讲就是利用了他的python_dump.py文件会对python源代码文件进行解析，他的项目地址:[pysonar2](https://github.com/yinwang0/pysonar2)
+ pyblade参考了王垠的在pysonar2项目中对python的语法树解析，具体来讲就是利用了他的python_dump.py文件会对python源代码文件进行解析，即便Python官方的ast模块进行了更新，
+ 只需对dump_python.py进行少量更改即可，不影响后续的代码审计。他的项目地址:[pysonar2](https://github.com/yinwang0/pysonar2)
 
 ### 问题来源：
 Python注入问题是说用户可以控制输入，导致系统执行一些危险的操作。它是Python中比较常见的安全问题，特别是把python作为web应用层的时候这个问题就更加突出，它包括代码注入，OS命令注入，sql注入，任意文件下载等。
