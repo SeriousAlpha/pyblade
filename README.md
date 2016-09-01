@@ -125,14 +125,18 @@ files是待检测的代码生成的字典。生成的具体方法参见tests目�
 
 <div align="center">
 <img src="https://raw.githubusercontent.com/younggege/photos/master/testfile.png" />
-
+ </div>
+ 
+<div align="center">
 Figure 2. 污点传播分析待检测样本
  </div>
 
 
 <div align="center">
 <img src="https://raw.githubusercontent.com/younggege/photos/master/result.png" />
-
+ </div>
+ 
+<div align="center">
 Figure 3. 污点传播分析检测结果
  </div>
 
