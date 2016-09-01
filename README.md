@@ -143,13 +143,6 @@ Figure 3. 污点传播分析检测结果
  </div>
 
 
-### 文件说明：
------
-* color_log.py 用于对log进行着色
-* dump_python.py 对Python进行语法树分析,把源文件转成一个字典保存
-* cfg_generate.py 用于产生控制流图
-
-
 ### License：
 -----
 GPL v2(通用公共授权第二版, 1991年6月)
