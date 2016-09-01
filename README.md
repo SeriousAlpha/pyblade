@@ -80,6 +80,7 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
 3. 可变对象赋值。Python中的可变对象有字典、列表可以进行拷贝进行重新赋值，形成一个新污染变量。a.copy(b)。
 3. 函数调用传递形式参数。在函数定义出使用的形式参数，在函数调用时会以实际参数传入，例如：cat_file(file)
 4. 类的实例化。Python支持面向对象编程，类对象支持两种操作：引用和实例化。引用操作是通过类对象去调用类中的属性或者方法，而实例化是产生出一个类对象的实例。因此污点变量可以通过类进行传播。
+
 <center>
 <img src="https://raw.githubusercontent.com/younggege/photos/77065cc752f4055b79d9eedb2a149b0a5428cf0c/taint.png" />
 
@@ -121,6 +122,7 @@ scan(files)
 files是待检测的代码生成的字典。生成的具体方法参见tests目录下的readme
 
 ### 实现效果示例：
+
 <center>
 <img src="https://raw.githubusercontent.com/younggege/photos/master/testfile.png" />
 
@@ -128,11 +130,11 @@ Figure 2. 污点传播分析待检测样本
 </center>
 
 
-<center>
+<div align="center">
 <img src="https://raw.githubusercontent.com/younggege/photos/master/result.png" />
 
 Figure 3. 污点传播分析检测结果
-</center>
+ </div>
 
 
 ### 文件说明：
