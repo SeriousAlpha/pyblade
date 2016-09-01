@@ -147,9 +147,9 @@ Figure 2. 污点传播分析待检测样本
 
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/younggege/photos/master/results.png" />
+<img src="https://raw.githubusercontent.com/younggege/photos/master/results1.png" />
  </div>
- 
+
 <div align="center">
 Figure 3. 污点传播分析检测结果
  </div>
