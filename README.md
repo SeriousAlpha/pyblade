@@ -12,6 +12,7 @@
 Python注入问题是说用户可以控制输入，导致系统执行一些危险的操作。它是Python中比较常见的安全问题，特别是把python作为web应用层的时候这个问题就更加突出，它包括代码注入，OS命令注入，sql注入，任意文件下载等。
 
 * os命令注入
+
     主要是程序中通过Python的OS接口执行系统命令，常见的危险函数有
     ```python
     os.system, os.popen, commands.getoutput, commands.getstatusoutput, subprocess
@@ -24,6 +25,7 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
     其中fullname是可控的，恶意用户只需利用shell的拼接符就可以完成一次很好的攻击。
     
 * 代码注入
+
     注入点可以执行一段代码，这个一般都是由Python的序列化函数eval导致的，例如：
     ```python
     def eval_test(request, login):
@@ -32,6 +34,7 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
     如果恶意用户从外界传入import('os').system('rm /tmp -fr')就可以清空tmp目录。
     
 * SQL注入
+
    在一般的Python web框架中都对sql注入做了防护，但是千万别认为就没有注入风险，使用不当也会导致sql注入，例如：
    ```python
    def getUsers(user_id):
@@ -40,6 +43,7 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
    ```
    
 * 任意文件下载
+
     程序员编写了一个下载报表或者任务的功能，如果没有控制好参数就会导致任意文件下载，例如:
     ```python
     def export_task(request, filename):
@@ -59,8 +63,10 @@ Python注入问题是说用户可以控制输入，导致系统执行一些危�
     下面我们将以一个if结构片段代码作为示例，来解释Python源码到其语法树的对应关系。片段代码： 
     if type not in ["RSAS", "BVS"]:
         HttpResponse("2")
+        
     它生成的代码如下所示：
     ｛"body": [...], "lineno": 5,  "test": { "ops": [{ "type": "NotIn" }], "comparators": [...], "opsName": [...],}, "type": "If", "orelse": [] }
+    
     在这个语法树结构中，body里包含着if结构中的语句HttpResponse("2"),type为Compare表示该结构体为判断语句，left表示左值即源码中的type，test结构体中则是用来进行if判断，
     test中的ops对应着源码中的not in，表示比较判断，comparators则是被比较的元素。这样源码就和Python语法树一一对应起来，有了这些一一对应的基础，就有了判断Python注入问题的原型。
     
