@@ -15,26 +15,31 @@ def test(num):
         func = _get_func()
         func(arg)
 
+    def func6():
+        pass
+
     def func4():
         func2('123')
+
         def func5():
             pass
-
+        func5()
+        func6()
 
     func4()
     func2(cmd)
-    if 1 == num:
-        def func3():
-            print 'func3'
-        func2(cmd)
-        if True:
-            def func7():
-                pass
-            def func8():
-                pass
-        return func1
-    elif 2 == num:
-        return func2
+    build_airport()
+    #if 1 == num:
+    #    def func3():
+    #        print 'func3'
+    #    if True:
+    #        def func7():
+    #            pass
+    #        def func8():
+    #            pass
+    #    return func1
+    #elif 2 == num:
+    #    return func2
 
 
 def build_airport():

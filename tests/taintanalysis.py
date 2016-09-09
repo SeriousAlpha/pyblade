@@ -29,3 +29,10 @@ if __name__ == '__main__':
 # file -> filename -> cmd -> filename -> cmd -> filename -> cmd  == os.system(cmd)
 
 # catfile() -> listfile() -> demo()
+
+cur = ''
+
+
+def getUsers(user_id):
+    sql = 'select * from auth_user where id =%s'%user_id
+    res = cur.execute(sql)

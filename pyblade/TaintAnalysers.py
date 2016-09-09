@@ -607,7 +607,7 @@ def look_up_arg(func, args_ori, args, func_name):
             if (set(args_ori) & set(leafs)):
                 if target_ids:
                     args_ori.update(target_ids)
-                    logger.info("In Assign,BinOp add (%r) to (%r) where line=(%r)" % (target_ids, args_ori, line.get('lineno')))
+                    #logger.info("In Assign,BinOp add (%r) to (%r) where line=(%r)" % (target_ids, args_ori, line.get('lineno')))
         # 列表解析式
         if line.get("type") == "Assign" and "value" in line and line.get("value").get("type") in (
         "ListComp", "SetComp"):
@@ -668,8 +668,7 @@ def look_up_arg(func, args_ori, args, func_name):
             value_func = line.get('value').get('func')
             (topids, parent) = ([], {})
             rec_get_attr_top_id(value_func, parent, topids)
-            logger.info('In Call:topids:%r,value_arg_ids:%r,value_func_ids:%r,line:%r' % (
-            topids, value_arg_ids, value_func_ids, line))
+            logger.info('In Call:topids:%r,value_arg_ids:%r,value_func_ids:%r,line:%r' % (topids, value_arg_ids, value_func_ids, line))
 
             if value_arg_ids or topids:
                 # 处理普通方法
@@ -678,14 +677,12 @@ def look_up_arg(func, args_ori, args, func_name):
 
                     if target_ids :  # 开了verbose模式，函数处理后的则直接加入到变量中
                         args_ori.update(target_ids)
-                        logger.info("In Assign,Call:Verbose Name add (%r) to (%r) where line=(%r) line=(%r)" % (
-                        target_ids, args_ori, line.get('lineno'), line))
+                        logger.info("In Assign,Call:Verbose Name add (%r) to (%r) where line=(%r) line=(%r)" % (target_ids, args_ori, line.get('lineno'), line))
                     else:
                         if target_ids and value_func_ids and value_func_ids.issubset(
                                 (set(STR_FUNCS) | set(SOURCE))):
                             args_ori.update(target_ids)
-                            logger.info("In Assign,Call:Name add (%r) to (%r) where line=(%r) line=(%r)" % (
-                            target_ids, args_ori, line.get('lineno'), line))
+                            logger.info("In Assign,Call:Name add (%r) to (%r) where line=(%r) line=(%r)" % (target_ids, args_ori, line.get('lineno'), line))
                         elif target_ids and value_func_ids and (
                             value_func_ids & ((set(SOURCE) | set(FILE_UNSAFE_FUNCS)))):
                             is_arg_in = True

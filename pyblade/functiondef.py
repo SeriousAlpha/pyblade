@@ -148,13 +148,12 @@ def new_dict(content, new_func_tree, label):
             new_func_tree[assign_key].setdefault('call', {})
             new_func_tree[assign_key]['call'].update({assign_lineno: {'name': assgin_name}})
 
-        elif body.get('type') == 'If':
+        #elif body.get('type') == 'If':
             #todo handle the if
-            if_label = re_label[:]
+        #    if_label = re_label[:]
             #if_label.append(str(int(if_label[-1])+1))
             #new_func_tree.setdefault('if', {})
-         #   print if_label
-            new_dict(body.get('body'), new_func_tree, if_label)
+        #    new_dict(body.get('body'), new_func_tree, if_label)
 
 
 def get_func_arglist(func, func_trees, node):
@@ -232,8 +231,88 @@ def find_function_call(content, detail_func, root_name):
                     detail_func.setdefault(funcID_, {'name': if_func_name, 'call': lineno_})
 
 
-def get_call_funcname(func):
+def traverse_tree(dict_tree):
+    for keys, value in dict_tree.iteritems():
+        if 'call' in value:
+            call_dict = value.get('call')
+            for keys_, value_ in call_dict.iteritems():
+                func_name = value_.get('name')
+                label = traverse_def_name(dict_tree, func_name, keys)
+                call_dict[keys_].update({'label': label})
+
+
+def traverse_def_name(dict_tree, call_name, key):
+    index = [key]
+    if '.' in key:
+        parent = key.split('.')
+        parent.pop()
+        parent_index = '.'.join(parent)
+        children = dict_tree.get(key).get('children')
+        for node in range(1, children + 1):
+            index.append(str(node))
+            childnode = '.'.join(index)
+            def_name = dict_tree.get(childnode).get('name')
+            if call_name == def_name:
+                print '....%s,...%s', childnode, call_name
+                return childnode
+            index.pop()
+        ret = traverse_def_name(dict_tree, call_name, parent_index)
+        print '%%%%%%'+  str(ret)
+        return ret
+    else:
+        if key == '0':
+            count = dict_tree.get('0').get('children')
+            for node in range(1, count + 1):
+                def_name = dict_tree.get(str(node)).get('name')
+                if call_name == def_name:
+                    #print node, call_name
+                    return node
+        else:
+            parent_index = '0'
+            ret = traverse_child_node(dict_tree, call_name, key)
+            print '----' + str(ret)
+            if not ret:
+                return traverse_def_name(dict_tree, call_name, parent_index)
+            else:
+                return ret
+
+
+def re_traverse_def_name(dict_tree, name, key):
+    children = dict_tree.get(key).get('children')
     pass
+
+
+def traverse_node(dict_tree, call_name, key):
+    '''add deep of key  def :1.5.1 call: key->1.5'''
+    index = [key]
+    children = dict_tree.get(key).get('children')
+    for node in range(1, children+1):
+        index.append(str(node))
+        childnode = '.'.join(index)
+        def_name = dict_tree.get(childnode).get('name')
+        if def_name == call_name:
+            print childnode, def_name
+        index.pop()
+
+
+def reverse_key(key):
+    parent = key.split('.')
+    parent.pop()
+    parent_index = '.'.join(parent)
+    return parent_index
+
+
+def traverse_child_node(dict_tree, call_name, key):
+    index = [key]
+    children = dict_tree.get(key).get('children')
+    for node in range(1, children + 1):
+        index.append(str(node))
+        childnode = '.'.join(index)
+        def_name = dict_tree.get(childnode).get('name')
+        if call_name == def_name:
+            #print childnode, call_name
+            return childnode
+        index.pop()
 
 
 def print_find_function(content):
@@ -262,8 +341,10 @@ def main():
     detail_func = OrderedDict({})
     find_function(body, func_tree, root_name, [root_name], [], [])
     new_dict(body, new_func_tree, [])
+    traverse_tree(new_func_tree)
     pp.pprint(dicts(new_func_tree))
-    find_function_call(body, detail_func, root_name)
+    #find_function_call(body, detail_func, root_name)
+
     #pp.pprint(dicts(func_tree))
     #pp.pprint(dicts(detail_func))
 
@@ -273,3 +354,4 @@ if __name__ == "__main__":
 
 
 # tpye : ClassDef, FunctionDef, Assign, If, Import, Attribute, Return
+
