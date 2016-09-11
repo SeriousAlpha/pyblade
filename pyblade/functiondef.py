@@ -253,11 +253,9 @@ def traverse_def_name(dict_tree, call_name, key):
             childnode = '.'.join(index)
             def_name = dict_tree.get(childnode).get('name')
             if call_name == def_name:
-                print '....%s,...%s', childnode, call_name
                 return childnode
             index.pop()
         ret = traverse_def_name(dict_tree, call_name, parent_index)
-        print '%%%%%%'+  str(ret)
         return ret
     else:
         if key == '0':
@@ -265,21 +263,14 @@ def traverse_def_name(dict_tree, call_name, key):
             for node in range(1, count + 1):
                 def_name = dict_tree.get(str(node)).get('name')
                 if call_name == def_name:
-                    #print node, call_name
                     return node
         else:
             parent_index = '0'
             ret = traverse_child_node(dict_tree, call_name, key)
-            print '----' + str(ret)
             if not ret:
                 return traverse_def_name(dict_tree, call_name, parent_index)
             else:
                 return ret
-
-
-def re_traverse_def_name(dict_tree, name, key):
-    children = dict_tree.get(key).get('children')
-    pass
 
 
 def traverse_node(dict_tree, call_name, key):
@@ -310,7 +301,6 @@ def traverse_child_node(dict_tree, call_name, key):
         childnode = '.'.join(index)
         def_name = dict_tree.get(childnode).get('name')
         if call_name == def_name:
-            #print childnode, call_name
             return childnode
         index.pop()
 
@@ -344,9 +334,6 @@ def main():
     traverse_tree(new_func_tree)
     pp.pprint(dicts(new_func_tree))
     #find_function_call(body, detail_func, root_name)
-
-    #pp.pprint(dicts(func_tree))
-    #pp.pprint(dicts(detail_func))
 
 
 if __name__ == "__main__":
