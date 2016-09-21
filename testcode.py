@@ -10,7 +10,6 @@ file = os.path.join(dir, 'tests/' + FILE)
 fd = open(file, 'r+')
 strings = fd.read()
 
-
 files = {
     FILE: strings}
 

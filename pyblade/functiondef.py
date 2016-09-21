@@ -31,16 +31,19 @@ import pprint
 
 from collections import defaultdict
 from collections import OrderedDict
-from TaintAnalysers import rec_decrease_tree,get_func_id
+from TaintAnalysers import rec_decrease_tree
 logger = utils.color_log.init_log(logging.DEBUG)
 pp = pprint.PrettyPrinter(depth=10)
 
+FILENAME = 'taintanalysis.py'
+#FILENAME = 'sample2.py'
+
 dir = os.path.abspath('..')
-file = os.path.join(dir, 'tests', 'sample2.py')
+file = os.path.join(dir, 'tests', FILENAME)
 fd = open(file, 'r+')
 strings = fd.read()
 files = {
-    'sample2.py': strings}
+    FILENAME: strings}
 
 
 def gennerate_uuid(rootname, lineno):
@@ -109,44 +112,29 @@ def new_dict(content, new_func_tree, label):
     count = 0
     for body in content:
         if body.get('type') == 'FunctionDef':
-            #get_func_id(body,)
             func_name = body.get('name')
             lineno = body.get('lineno')
             count += 1
-            re_count = count
             re_label = label[:]
             re_label.append(str(count))
-            key = '.'.join(re_label)
-            key_parent = '.'.join(re_label[:-1])
-            arg_list = get_func_args(body)
-            new_func_tree.setdefault(key, {'lineno': lineno, 'name': func_name, 'args': arg_list, 'children': 0})
-            if not key_parent:
-                if '0' in new_func_tree.keys():
-                    add_child = new_func_tree['0'].get('children') + 1
-                    new_func_tree['0'].update({'children': add_child})
-                else:
-                    new_func_tree.setdefault('0', {'children': 1})
-            else:
-                update_child = new_func_tree[key_parent].get('children') + 1
-                new_func_tree[key_parent].update({'children': update_child})
+            update_dict_children(new_func_tree, body, re_label, lineno, func_name)
             new_dict(body.get('body'), new_func_tree, re_label)
 
         elif body.get('type') == 'Expr' and body.get('value').get('type') == 'Call':
-            #todo fix the bug of call
             call_lineno = body.get('lineno')
+            #todo fix the bug of call  example:os.system
             call_name = (body.get('value').get('func').get('id') == None and body.get('value').get('func').get('value').get('id') or body.get('value').get('func').get('id'))
-            expr_label = label[:]
-            expr_key = '.'.join(expr_label)
-            new_func_tree[expr_key].setdefault('call', {})
-            new_func_tree[expr_key]['call'].update({call_lineno: {'name': call_name}})
+            args = body.get('value').get('args')
+            for arg in args:
+                if arg.get('type') == 'Name':
+                    call_args = []
+                    call_args.append(arg.get('id'))
+            handle_func_call(new_func_tree, label, call_lineno, call_name, call_args)
 
         elif body.get('type') == 'Assign' and body.get('value').get('type') == 'Call':
             assign_lineno = body.get('lineno')
             assgin_name = body.get('value').get('func').get('id')
-            assign_label = label[:]
-            assign_key = '.'.join(assign_label)
-            new_func_tree[assign_key].setdefault('call', {})
-            new_func_tree[assign_key]['call'].update({assign_lineno: {'name': assgin_name}})
+            handle_func_call(new_func_tree, label, assign_lineno, assgin_name)
 
         #elif body.get('type') == 'If':
             #todo handle the if
@@ -154,6 +142,29 @@ def new_dict(content, new_func_tree, label):
             #if_label.append(str(int(if_label[-1])+1))
             #new_func_tree.setdefault('if', {})
         #    new_dict(body.get('body'), new_func_tree, if_label)
+
+
+def update_dict_children(new_func_tree, body, re_label, lineno, func_name):
+    key = '.'.join(re_label)
+    key_parent = '.'.join(re_label[:-1])
+    arg_list = get_func_args(body)
+    new_func_tree.setdefault(key, {'body': body, 'lineno': lineno, 'name': func_name, 'args': arg_list, 'children': 0})
+    if not key_parent:
+        if '0' in new_func_tree.keys():
+            add_child = new_func_tree['0'].get('children') + 1
+            new_func_tree['0'].update({'children': add_child})
+        else:
+            new_func_tree.setdefault('0', {'children': 1})
+    else:
+        update_child = new_func_tree[key_parent].get('children') + 1
+        new_func_tree[key_parent].update({'children': update_child})
+
+
+def handle_func_call(new_func_tree, label, lineno, name, args):
+    re_label = label[:]
+    re_key = '.'.join(re_label)
+    new_func_tree[re_key].setdefault('call', {})
+    new_func_tree[re_key]['call'].update({lineno: {'name': name, 'args': args}})
 
 
 def get_func_arglist(func, func_trees, node):
@@ -196,7 +207,6 @@ def dicts(t):
 
 
 def getFromDict(dataDict, mapList):
-    #return reduce(lambda d, k: d[k], mapList, dataDict)
     for k in mapList:
         dataDict = dataDict[k]
     return dataDict
@@ -239,24 +249,17 @@ def traverse_tree(dict_tree):
                 func_name = value_.get('name')
                 label = traverse_def_name(dict_tree, func_name, keys)
                 call_dict[keys_].update({'label': label})
+    return dict_tree
 
 
 def traverse_def_name(dict_tree, call_name, key):
-    index = [key]
     if '.' in key:
-        parent = key.split('.')
-        parent.pop()
-        parent_index = '.'.join(parent)
-        children = dict_tree.get(key).get('children')
-        for node in range(1, children + 1):
-            index.append(str(node))
-            childnode = '.'.join(index)
-            def_name = dict_tree.get(childnode).get('name')
-            if call_name == def_name:
-                return childnode
-            index.pop()
-        ret = traverse_def_name(dict_tree, call_name, parent_index)
-        return ret
+        parent_index = reverse_key(key)
+        ret = traverse_child_node(dict_tree, call_name, key)
+        if not ret:
+            return traverse_def_name(dict_tree, call_name, parent_index)
+        else:
+            return ret
     else:
         if key == '0':
             count = dict_tree.get('0').get('children')
@@ -273,27 +276,8 @@ def traverse_def_name(dict_tree, call_name, key):
                 return ret
 
 
-def traverse_node(dict_tree, call_name, key):
-    '''add deep of key  def :1.5.1 call: key->1.5'''
-    index = [key]
-    children = dict_tree.get(key).get('children')
-    for node in range(1, children+1):
-        index.append(str(node))
-        childnode = '.'.join(index)
-        def_name = dict_tree.get(childnode).get('name')
-        if def_name == call_name:
-            print childnode, def_name
-        index.pop()
-
-
-def reverse_key(key):
-    parent = key.split('.')
-    parent.pop()
-    parent_index = '.'.join(parent)
-    return parent_index
-
-
 def traverse_child_node(dict_tree, call_name, key):
+    ''' add deep of key  def :1.5.1 call: key->1.5 '''
     index = [key]
     children = dict_tree.get(key).get('children')
     for node in range(1, children + 1):
@@ -305,11 +289,19 @@ def traverse_child_node(dict_tree, call_name, key):
         index.pop()
 
 
+def reverse_key(key):
+    parent = key.split('.')
+    parent.pop()
+    parent_index = '.'.join(parent)
+    return parent_index
+
+
 def print_find_function(content):
     for body in content:
         if body.get('type') == 'FunctionDef':
             key = body.get('name')
-            logger.warning('%s', key)
+            func = body.get('body')
+            print func
             print_find_function(body.get('body'))
 
 
@@ -331,8 +323,9 @@ def main():
     detail_func = OrderedDict({})
     find_function(body, func_tree, root_name, [root_name], [], [])
     new_dict(body, new_func_tree, [])
-    traverse_tree(new_func_tree)
-    pp.pprint(dicts(new_func_tree))
+    update_label = traverse_tree(new_func_tree)
+    pp.pprint(dicts(update_label))
+    #print_find_function(body)
     #find_function_call(body, detail_func, root_name)
 
 

@@ -167,7 +167,7 @@ class TaintAnalyzer(object):
         if func_name == '__init__':
             self.arg.setdefault(class_name, args_ori)
         self.record_param[func_name] = args_ori # ??????
-        #print 'func,record_param,i:', func_name,self.record_param.get(func_name),i
+        print 'func,record_param:', func_name,self.record_param.get(func_name)
         lines = self.func_lines[func_name]
         for line in lines:
             arg_leafs = []
@@ -542,6 +542,7 @@ def look_up_arg(func, args_ori, args, func_name):
     """ recusive to find unsafe function args
     func: test function,args_ori: test function args，args: unsafe function args
     """
+    #print 'sssssss',args_ori
     global is_arg_in
     if isinstance(func, dict) and 'body' in func:
         lines = func.get('body')
@@ -551,7 +552,7 @@ def look_up_arg(func, args_ori, args, func_name):
         lines = [func]
     else:
         lines = []
-
+    #print func
     for line in lines:
         #        print 'look_up_arg:line:',line
         ast_body = line.get('body')
@@ -569,16 +570,14 @@ def look_up_arg(func, args_ori, args, func_name):
         if line.get("type") == "Assign" and "value" in line and line.get("value").get("type") == "Name":
             if target_ids and line.get("value").get("id") in args_ori:
                 args_ori.update(target_ids)
-                logger.info("In Assign,Name add (%r) to (%r) where line=(%r) line=(%r)" % (
-                target_ids, args_ori, line.get('lineno'), line))
+                logger.info("In Assign,Name add (%r) to (%r) where line=(%r) line=(%r)" % (target_ids, args_ori, line.get('lineno'), line))
 
         if line.get("type") == "Assign" and "value" in line and line.get("value").get("type") == "Attribute":
             value_func = line.get('value').get('value')
             if value_func and value_func.get("type") == 'Name':
                 if target_ids and value_func.get("id") in args_ori:
                     args_ori.update(target_ids)
-                    logger.info("In Assign,Attr add (%r) to (%r) where line=(%r) line=(%r)" % (
-                    target_ids, args_ori, line.get('lineno'), line))
+                    logger.info("In Assign,Attr add (%r) to (%r) where line=(%r) line=(%r)" % (target_ids, args_ori, line.get('lineno'), line))
 
             else:
                 topids = []
@@ -592,8 +591,7 @@ def look_up_arg(func, args_ori, args, func_name):
                             target_ids, args_ori, line.get('lineno'), line))
                         elif parent and parent.get('type') == 'Attribute':
                             args_ori.difference_update(set(target_ids))
-                            logger.warn(
-                                "In Assign,Attr delete (%r) from (%r) where line=(%r)***************************** line=(%r)" % (
+                            logger.warn("In Assign,Attr delete (%r) from (%r) where line=(%r)***************************** line=(%r)" % (
                                 target_ids, args_ori, line.get('lineno'), line))
 
         # 处理字符串拼接过程
@@ -606,8 +604,9 @@ def look_up_arg(func, args_ori, args, func_name):
             #logger.info('----%r----%r' % (args_ori, leafs))
             if (set(args_ori) & set(leafs)):
                 if target_ids:
+                    #print '----%r',target_ids
                     args_ori.update(target_ids)
-                    #logger.info("In Assign,BinOp add (%r) to (%r) where line=(%r)" % (target_ids, args_ori, line.get('lineno')))
+                    logger.info("In Assign,BinOp add (%r) to (%r) where line=(%r)" % (target_ids, args_ori, line.get('lineno')))
         # 列表解析式
         if line.get("type") == "Assign" and "value" in line and line.get("value").get("type") in (
         "ListComp", "SetComp"):
@@ -703,7 +702,6 @@ def look_up_arg(func, args_ori, args, func_name):
                             #                                    logger.info("arg_id,assign31:%r,args_ori:%r" %(value_arg_ids, args_ori))
 
                 elif value_func_type == 'Attribute':  # 处理属性方法，如从dict取值
-
                     if (set(topids) & set(args_ori)):
                         if topids[0].lower() == 'request':
                             if parent and parent.get('type') == 'Attribute' and parent.get('attr') in REQUEST_VAR:

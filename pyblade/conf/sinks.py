@@ -1,7 +1,5 @@
 
-FILE = ['open',\
-        'file'\
-        ]
+FILE = ['open']
 
 OS_COMMAND = ['os.system']
 
