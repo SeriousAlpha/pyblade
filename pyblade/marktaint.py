@@ -74,8 +74,8 @@ def handle_strcat(dict_func, taint_func):
 
 
 def parse_func_body(func, unsafe_func):
-    # 判断函数体里是否有危险函数
-
+    # 判断函数体里是否有危险函数，编写遍历函数体的函数
+    #todo 抽空写一下这个函数
     pass
 
 
